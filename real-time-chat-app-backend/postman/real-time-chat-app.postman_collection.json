@@ -1,0 +1,146 @@
+{
+  "info": {
+    "name": "Real Time Chat App Backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Register User",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"João\",\n  \"cpf\": \"12345678901\",\n  \"password\": \"123456\",\n  \"isAdmin\": false\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/register",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "auth",
+            "register"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Login User",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cpf\": \"12345678901\",\n  \"password\": \"123456\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/login",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "auth",
+            "login"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Create Group",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"groupName\": \"Sala de estudos\",\n  \"creatorUuid\": \"{{creator_uuid}}\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/groups",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "groups"
+          ]
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const response = pm.response.json();",
+              "if (response && response.groupUuid) {",
+              "  pm.collectionVariables.set('group_uuid', response.groupUuid);",
+              "}",
+              "if (response && response.creatorUuid) {",
+              "  pm.collectionVariables.set('creator_uuid', response.creatorUuid);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delete Group",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "user-uuid",
+            "value": "{{creator_uuid}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/groups/{{group_uuid}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "groups",
+            "{{group_uuid}}"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "creator_uuid",
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    {
+      "key": "group_uuid",
+      "value": "00000000-0000-0000-0000-000000000000"
+    }
+  ]
+}
