@@ -1,0 +1,276 @@
+package com.jfxrias.realtimechatappbackend;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jfxrias.realtimechatappbackend.repository.GroupMessageRepository;
+import com.jfxrias.realtimechatappbackend.repository.PrivateMessageRepository;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.*;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class MessageControllerIntegrationTest {
+    private static int sequence = 3000;
+
+    @LocalServerPort
+    private int port;
+
+    @Autowired
+    private PrivateMessageRepository privateMessageRepository;
+
+    @Autowired
+    private GroupMessageRepository groupMessageRepository;
+
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Test
+    void shouldSendPrivateMessageToSelfAndPersistIt() throws Exception {
+        TestUser user = registerAndLogin("Usuário privado");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                baseUrl() + "/messages/private",
+                HttpMethod.POST,
+                authenticatedRequest(Map.of("receiverUuid", user.uuid(), "content", "Mensagem para mim"), user.token()),
+                String.class
+        );
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        JsonNode body = objectMapper.readTree(response.getBody());
+        assertEquals(user.uuid(), body.get("senderUuid").asText());
+        assertEquals(user.uuid(), body.get("receiverUuid").asText());
+        assertEquals("Mensagem para mim", body.get("content").asText());
+        assertTrue(privateMessageRepository.count() > 0);
+    }
+
+    @Test
+    void shouldRejectPrivateMessageWithoutToken() {
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(Map.of(
+                "receiverUuid", "uuid-qualquer",
+                "content", "Olá"
+        ), new HttpHeaders());
+
+        assertStatus(
+                () -> restTemplate.exchange(baseUrl() + "/messages/private", HttpMethod.POST, request, String.class),
+                HttpStatus.UNAUTHORIZED
+        );
+    }
+
+    @Test
+    void shouldRejectPrivateMessageForUnknownReceiver() {
+        TestUser sender = registerAndLogin("Remetente privado");
+
+        assertError(
+                () -> restTemplate.exchange(
+                        baseUrl() + "/messages/private",
+                        HttpMethod.POST,
+                        authenticatedRequest(Map.of("receiverUuid", "usuario-inexistente", "content", "Olá"), sender.token()),
+                        String.class
+                ),
+                HttpStatus.BAD_REQUEST,
+                "Usuário destinatário não encontrado"
+        );
+    }
+
+    @Test
+    void shouldSendOneMessageToTwoGroupsAndAvoidDuplicateGroupUuid() throws Exception {
+        TestUser sender = registerAndLogin("Remetente grupo");
+        String firstGroup = createGroup(sender, "Grupo um");
+        String secondGroup = createGroup(sender, "Grupo dois");
+
+        Map<String, Object> body = Map.of(
+                "groupUuids", List.of(firstGroup, secondGroup, firstGroup),
+                "content", "Aviso único"
+        );
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                baseUrl() + "/messages/groups",
+                HttpMethod.POST,
+                authenticatedRequest(body, sender.token()),
+                String.class
+        );
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        JsonNode responseBody = objectMapper.readTree(response.getBody());
+        assertEquals("Mensagem enviada aos grupos", responseBody.get("message").asText());
+        assertEquals(2, responseBody.get("deliveries").size());
+        assertTrue(groupMessageRepository.count() >= 2);
+    }
+
+    @Test
+    void shouldRejectMessageWhenUserDoesNotParticipateInGroup() {
+        TestUser creator = registerAndLogin("Criador grupo");
+        TestUser outsider = registerAndLogin("Usuário externo");
+        String groupUuid = createGroup(creator, "Grupo protegido");
+
+        assertError(
+                () -> restTemplate.exchange(
+                        baseUrl() + "/messages/groups",
+                        HttpMethod.POST,
+                        authenticatedRequest(Map.of("groupUuids", List.of(groupUuid), "content", "Não autorizado"), outsider.token()),
+                        String.class
+                ),
+                HttpStatus.BAD_REQUEST,
+                "Usuário não participa do grupo: " + groupUuid
+        );
+    }
+
+    @Test
+    void shouldRejectUnknownGroup() {
+        TestUser sender = registerAndLogin("Remetente desconhecido");
+
+        assertError(
+                () -> restTemplate.exchange(
+                        baseUrl() + "/messages/groups",
+                        HttpMethod.POST,
+                        authenticatedRequest(Map.of("groupUuids", List.of("grupo-inexistente"), "content", "Olá"), sender.token()),
+                        String.class
+                ),
+                HttpStatus.BAD_REQUEST,
+                "Grupo não encontrado: grupo-inexistente"
+        );
+    }
+
+    @Test
+    void shouldRejectEmptyGroupList() {
+        TestUser sender = registerAndLogin("Remetente sem grupos");
+
+        assertStatus(
+                () -> restTemplate.exchange(
+                        baseUrl() + "/messages/groups",
+                        HttpMethod.POST,
+                        authenticatedRequest(Map.of("groupUuids", List.of(), "content", "Olá"), sender.token()),
+                        String.class
+                ),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @Test
+    void shouldRejectEmptyPrivateContent() {
+        TestUser sender = registerAndLogin("Remetente conteúdo vazio");
+
+        assertStatus(
+                () -> restTemplate.exchange(
+                        baseUrl() + "/messages/private",
+                        HttpMethod.POST,
+                        authenticatedRequest(Map.of("receiverUuid", sender.uuid(), "content", "   "), sender.token()),
+                        String.class
+                ),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+    private String createGroup(TestUser creator, String name) {
+        ResponseEntity<String> response = restTemplate.exchange(
+                baseUrl() + "/groups",
+                HttpMethod.POST,
+                authenticatedRequest(Map.of("groupName", name + uniqueSuffix(), "creatorUuid", creator.uuid()), creator.token()),
+                String.class
+        );
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        try {
+            JsonNode body = objectMapper.readTree(response.getBody());
+            String groupUuid = body.get("groupUuid").asText();
+
+            // Quando criado pelo usuário, o projeto ainda não adiciona o criador automaticamente.
+            // Adiciona-o explicitamente ao grupo para validar o fluxo completo de participação.
+            HttpEntity<Map<String, Object>> memberRequest = authenticatedRequest(
+                    Map.of("userUuid", creator.uuid(), "role", "MEMBER"),
+                    creator.token()
+            );
+            restTemplate.exchange(
+                    baseUrl() + "/groups/" + groupUuid + "/members",
+                    HttpMethod.POST,
+                    memberRequest,
+                    String.class
+            );
+            return groupUuid;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private TestUser registerAndLogin(String name) {
+        String cpf = String.format("%011d", sequence++);
+
+        ResponseEntity<String> registerResponse = restTemplate.postForEntity(
+                baseUrl() + "/auth/register",
+                Map.of("name", name, "cpf", cpf, "password", "123456", "isAdmin", false),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, registerResponse.getStatusCode());
+
+        try {
+            JsonNode registerBody = objectMapper.readTree(registerResponse.getBody());
+            String uuid = registerBody.get("userUuid").asText();
+
+            ResponseEntity<String> loginResponse = restTemplate.postForEntity(
+                    baseUrl() + "/auth/login",
+                    Map.of("cpf", cpf, "password", "123456"),
+                    String.class
+            );
+            assertEquals(HttpStatus.OK, loginResponse.getStatusCode());
+
+            JsonNode loginBody = objectMapper.readTree(loginResponse.getBody());
+            return new TestUser(uuid, loginBody.get("token").asText());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private HttpEntity<Map<String, Object>> authenticatedRequest(Map<String, Object> body, String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+        return new HttpEntity<>(body, headers);
+    }
+
+    private void assertStatus(org.junit.jupiter.api.function.Executable executable, HttpStatus status) {
+        try {
+            executable.execute();
+            fail("Era esperado erro HTTP " + status);
+        } catch (HttpClientErrorException ex) {
+            assertEquals(status, ex.getStatusCode());
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void assertError(org.junit.jupiter.api.function.Executable executable, HttpStatus status, String message) {
+        try {
+            executable.execute();
+            fail("Era esperado erro HTTP " + status);
+        } catch (HttpClientErrorException ex) {
+            assertEquals(status, ex.getStatusCode());
+            String responseBody = ex.getResponseBodyAsString();
+            assertTrue(
+                    responseBody != null && responseBody.contains(message),
+                    "Resposta esperada conter: " + message + ". Resposta recebida: " + responseBody
+            );
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private String baseUrl() {
+        return "http://localhost:" + port;
+    }
+
+    private String uniqueSuffix() {
+        return " - " + System.nanoTime();
+    }
+
+    private record TestUser(String uuid, String token) {
+    }
+}

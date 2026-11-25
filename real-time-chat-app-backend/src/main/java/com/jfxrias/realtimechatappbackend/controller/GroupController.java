@@ -1,9 +1,11 @@
 package com.jfxrias.realtimechatappbackend.controller;
 
+import com.jfxrias.realtimechatappbackend.dto.AddGroupMemberRequestDTO;
 import com.jfxrias.realtimechatappbackend.dto.CreateGroupRequestDTO;
 import com.jfxrias.realtimechatappbackend.dto.GroupResponseDTO;
 import com.jfxrias.realtimechatappbackend.entity.Group;
 import com.jfxrias.realtimechatappbackend.service.GroupService;
+import com.jfxrias.realtimechatappbackend.util.JwtUtil;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,9 +16,11 @@ import java.util.Map;
 @RequestMapping({"/groups", "/group"})
 public class GroupController {
     private final GroupService groupService;
+    private final JwtUtil jwtUtil;
 
-    public GroupController(GroupService groupService) {
+    public GroupController(GroupService groupService, JwtUtil jwtUtil) {
         this.groupService = groupService;
+        this.jwtUtil = jwtUtil;
     }
 
     @PostMapping({"", "/create"})
@@ -35,6 +39,37 @@ public class GroupController {
             );
             return ResponseEntity.ok(toResponse(group));
         } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{groupUuid}/members")
+    public ResponseEntity<?> addMember(
+            @PathVariable String groupUuid,
+            @Valid @RequestBody AddGroupMemberRequestDTO request,
+            @RequestHeader("Authorization") String authorization
+    ) {
+        try {
+            if (!authorization.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body(Map.of("message", "Token não informado"));
+            }
+            String token = authorization.substring(7).trim();
+            String authenticatedUserUuid = jwtUtil.extractUserUuid(token);
+
+            var member = groupService.addMember(
+                    groupUuid,
+                    authenticatedUserUuid,
+                    request.userUuid(),
+                    request.role()
+            );
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Usuário adicionado ao grupo",
+                    "groupUuid", member.getId().getGroupUuid(),
+                    "userUuid", member.getId().getUserUuid(),
+                    "role", member.getRole()
+            ));
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
