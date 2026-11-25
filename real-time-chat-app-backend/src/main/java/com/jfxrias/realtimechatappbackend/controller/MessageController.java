@@ -1,6 +1,7 @@
 package com.jfxrias.realtimechatappbackend.controller;
 
 import com.jfxrias.realtimechatappbackend.dto.SendGroupMessageRequestDTO;
+import com.jfxrias.realtimechatappbackend.dto.EditMessageRequestDTO;
 import com.jfxrias.realtimechatappbackend.dto.SendPrivateMessageRequestDTO;
 import com.jfxrias.realtimechatappbackend.entity.Message;
 import com.jfxrias.realtimechatappbackend.service.MessageService;
@@ -22,6 +23,47 @@ public class MessageController {
     public MessageController(MessageService messageService, JwtUtil jwtUtil) {
         this.messageService = messageService;
         this.jwtUtil = jwtUtil;
+    }
+
+    @PatchMapping("/{messageUuid}")
+    public ResponseEntity<?> editMessage(
+            @PathVariable String messageUuid,
+            @Valid @RequestBody EditMessageRequestDTO request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        try {
+            String authenticatedUserUuid = extractAuthenticatedUserUuid(authorization);
+            Message message = messageService.editMessage(authenticatedUserUuid, messageUuid, request.content());
+            return ResponseEntity.ok(Map.of(
+                    "messageUuid", message.getMessageUuid(),
+                    "content", message.getContent(),
+                    "editedAt", message.getEditedAt()
+            ));
+        } catch (IllegalArgumentException e) {
+            boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                    || e.getMessage().equals("Token não informado");
+            return tokenError
+                    ? ResponseEntity.status(401).body(Map.of("message", e.getMessage()))
+                    : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PatchMapping("/{messageUuid}/delete-for-me")
+    public ResponseEntity<?> deleteForMe(
+            @PathVariable String messageUuid,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        try {
+            String authenticatedUserUuid = extractAuthenticatedUserUuid(authorization);
+            messageService.deleteMessageForUser(authenticatedUserUuid, messageUuid);
+            return ResponseEntity.ok(Map.of("message", "Mensagem marcada como excluída para o usuário"));
+        } catch (IllegalArgumentException e) {
+            boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                    || e.getMessage().equals("Token não informado");
+            return tokenError
+                    ? ResponseEntity.status(401).body(Map.of("message", e.getMessage()))
+                    : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
     @PostMapping("/private")

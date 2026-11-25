@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.time.LocalDateTime;
 
 @Service
 public class MessageService {
@@ -81,6 +82,50 @@ public class MessageService {
             sentMessages.add(message);
         }
         return sentMessages;
+    }
+
+    @Transactional
+    public Message editMessage(String authenticatedUserUuid, String messageUuid, String content) {
+        String normalizedUserUuid = normalizeRequired(authenticatedUserUuid, "Usuário autenticado é obrigatório");
+        String normalizedMessageUuid = normalizeRequired(messageUuid, "UUID da mensagem é obrigatório");
+        String normalizedContent = normalizeContent(content);
+
+        Message message = messageRepository.findById(normalizedMessageUuid)
+                .orElseThrow(() -> new IllegalArgumentException("Mensagem não encontrada"));
+
+        if (!normalizedUserUuid.equals(message.getSenderUuid())) {
+            throw new IllegalArgumentException("Usuário não pode editar esta mensagem");
+        }
+
+        if (!privateMessageRepository.existsById(normalizedMessageUuid)
+                && !groupMessageRepository.existsById(normalizedMessageUuid)) {
+            throw new IllegalArgumentException("Mensagem não está vinculada a conversa privada ou grupo");
+        }
+
+        message.setContent(normalizedContent);
+        message.setEditedAt(LocalDateTime.now());
+        return messageRepository.save(message);
+    }
+
+    @Transactional
+    public void deleteMessageForUser(String authenticatedUserUuid, String messageUuid) {
+        String normalizedUserUuid = normalizeRequired(authenticatedUserUuid, "Usuário autenticado é obrigatório");
+        String normalizedMessageUuid = normalizeRequired(messageUuid, "UUID da mensagem é obrigatório");
+
+        Message message = messageRepository.findById(normalizedMessageUuid)
+                .orElseThrow(() -> new IllegalArgumentException("Mensagem não encontrada"));
+
+        if (!normalizedUserUuid.equals(message.getSenderUuid())) {
+            throw new IllegalArgumentException("Usuário não pode excluir esta mensagem para si");
+        }
+
+        if (!privateMessageRepository.existsById(normalizedMessageUuid)
+                && !groupMessageRepository.existsById(normalizedMessageUuid)) {
+            throw new IllegalArgumentException("Mensagem não está vinculada a conversa privada ou grupo");
+        }
+
+        message.setIsDeletedBySender(true);
+        messageRepository.save(message);
     }
 
     private String normalizeRequired(String value, String message) {

@@ -3,12 +3,14 @@ package com.jfxrias.realtimechatappbackend;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jfxrias.realtimechatappbackend.repository.GroupMessageRepository;
+import com.jfxrias.realtimechatappbackend.repository.MessageRepository;
 import com.jfxrias.realtimechatappbackend.repository.PrivateMessageRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.*;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
@@ -30,7 +32,10 @@ class MessageControllerIntegrationTest {
     @Autowired
     private GroupMessageRepository groupMessageRepository;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    @Autowired
+    private MessageRepository messageRepository;
+
+    private final RestTemplate restTemplate = patchEnabledRestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
@@ -170,6 +175,132 @@ class MessageControllerIntegrationTest {
         );
     }
 
+    @Test
+    void shouldEditPrivateMessageWhenAuthenticatedSender() throws Exception {
+        TestUser user = registerAndLogin("Editor privado");
+
+        ResponseEntity<String> sentResponse = restTemplate.exchange(
+                baseUrl() + "/messages/private",
+                HttpMethod.POST,
+                authenticatedRequest(Map.of("receiverUuid", user.uuid(), "content", "Texto antigo"), user.token()),
+                String.class
+        );
+        JsonNode sentBody = objectMapper.readTree(sentResponse.getBody());
+        String messageUuid = sentBody.get("messageUuid").asText();
+
+        ResponseEntity<String> editResponse = restTemplate.exchange(
+                baseUrl() + "/messages/" + messageUuid,
+                HttpMethod.PATCH,
+                authenticatedRequest(Map.of("content", "Texto editado"), user.token()),
+                String.class
+        );
+
+        assertEquals(HttpStatus.OK, editResponse.getStatusCode());
+        JsonNode editBody = objectMapper.readTree(editResponse.getBody());
+        assertEquals(messageUuid, editBody.get("messageUuid").asText());
+        assertEquals("Texto editado", editBody.get("content").asText());
+        assertNotNull(messageRepository.findById(messageUuid).orElseThrow().getEditedAt());
+    }
+
+    @Test
+    void shouldEditGroupMessageWhenAuthenticatedSender() throws Exception {
+        TestUser sender = registerAndLogin("Editor grupo");
+        String groupUuid = createGroup(sender, "Grupo edição");
+
+        ResponseEntity<String> sendResponse = restTemplate.exchange(
+                baseUrl() + "/messages/groups",
+                HttpMethod.POST,
+                authenticatedRequest(Map.of("groupUuids", List.of(groupUuid), "content", "Aviso antigo"), sender.token()),
+                String.class
+        );
+        JsonNode sendBody = objectMapper.readTree(sendResponse.getBody());
+        String messageUuid = sendBody.get("deliveries").get(0).get("messageUuid").asText();
+
+        ResponseEntity<String> editResponse = restTemplate.exchange(
+                baseUrl() + "/messages/" + messageUuid,
+                HttpMethod.PATCH,
+                authenticatedRequest(Map.of("content", "Aviso novo"), sender.token()),
+                String.class
+        );
+
+        assertEquals(HttpStatus.OK, editResponse.getStatusCode());
+        JsonNode editBody = objectMapper.readTree(editResponse.getBody());
+        assertEquals("Aviso novo", editBody.get("content").asText());
+    }
+
+    @Test
+    void shouldDeletePrivateMessageForSender() throws Exception {
+        TestUser sender = registerAndLogin("Remetente exclusão");
+        TestUser receiver = registerAndLogin("Destino exclusão");
+
+        ResponseEntity<String> sendResponse = restTemplate.exchange(
+                baseUrl() + "/messages/private",
+                HttpMethod.POST,
+                authenticatedRequest(Map.of("receiverUuid", receiver.uuid(), "content", "Apagar para receptor"), sender.token()),
+                String.class
+        );
+        String messageUuid = objectMapper.readTree(sendResponse.getBody()).get("messageUuid").asText();
+
+        ResponseEntity<String> deleteResponse = restTemplate.exchange(
+                baseUrl() + "/messages/" + messageUuid + "/delete-for-me",
+                HttpMethod.PATCH,
+                authenticatedRequest(Map.of(), sender.token()),
+                String.class
+        );
+
+        assertEquals(HttpStatus.OK, deleteResponse.getStatusCode());
+        assertTrue(messageRepository.findById(messageUuid).orElseThrow().getIsDeletedBySender());
+    }
+
+    @Test
+    void shouldRejectDeletePrivateMessageForReceiver() throws Exception {
+        TestUser sender = registerAndLogin("Remetente privado sem permissão");
+        TestUser receiver = registerAndLogin("Receptor privado sem permissão");
+
+        ResponseEntity<String> sendResponse = restTemplate.exchange(
+                baseUrl() + "/messages/private",
+                HttpMethod.POST,
+                authenticatedRequest(Map.of("receiverUuid", receiver.uuid(), "content", "Mensagem privada"), sender.token()),
+                String.class
+        );
+        String messageUuid = objectMapper.readTree(sendResponse.getBody()).get("messageUuid").asText();
+
+        assertError(
+                () -> restTemplate.exchange(
+                        baseUrl() + "/messages/" + messageUuid + "/delete-for-me",
+                        HttpMethod.PATCH,
+                        authenticatedRequest(Map.of(), receiver.token()),
+                        String.class
+                ),
+                HttpStatus.BAD_REQUEST,
+                "Usuário não pode excluir esta mensagem para si"
+        );
+    }
+
+    @Test
+    void shouldDeleteGroupMessageForSender() throws Exception {
+        TestUser sender = registerAndLogin("Remetente grupo exclusão");
+        String groupUuid = createGroup(sender, "Grupo exclusão");
+
+        ResponseEntity<String> sendResponse = restTemplate.exchange(
+                baseUrl() + "/messages/groups",
+                HttpMethod.POST,
+                authenticatedRequest(Map.of("groupUuids", List.of(groupUuid), "content", "Apagar para mim"), sender.token()),
+                String.class
+        );
+        String messageUuid = objectMapper.readTree(sendResponse.getBody()).get("deliveries").get(0).get("messageUuid").asText();
+
+        ResponseEntity<String> deleteResponse = restTemplate.exchange(
+                baseUrl() + "/messages/" + messageUuid + "/delete-for-me",
+                HttpMethod.PATCH,
+                authenticatedRequest(Map.of(), sender.token()),
+                String.class
+        );
+
+        assertEquals(HttpStatus.OK, deleteResponse.getStatusCode());
+        assertTrue(messageRepository.findById(messageUuid).orElseThrow().getIsDeletedBySender());
+    }
+
     private String createGroup(TestUser creator, String name) {
         ResponseEntity<String> response = restTemplate.exchange(
                 baseUrl() + "/groups",
@@ -269,6 +400,10 @@ class MessageControllerIntegrationTest {
 
     private String uniqueSuffix() {
         return " - " + System.nanoTime();
+    }
+
+    private RestTemplate patchEnabledRestTemplate() {
+        return new RestTemplate(new HttpComponentsClientHttpRequestFactory());
     }
 
     private record TestUser(String uuid, String token) {
