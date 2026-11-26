@@ -1,0 +1,7 @@
+.uz-auth { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background: radial-gradient(circle at 20% 0%, rgba(0,168,132,.18), transparent 45%), radial-gradient(circle at 100% 100%, rgba(29,111,165,.15), transparent 40%), var(--uz-bg); }
+.uz-auth-card { width: 100%; max-width: 420px; background: var(--uz-panel); border: 1px solid var(--uz-border); border-radius: 20px; padding: 2.25rem 2rem; box-shadow: 0 30px 70px rgba(0,0,0,.45); }
+.uz-auth-card .uz-logo { font-size: 2rem; }
+.uz-auth-brand { display: flex; align-items: center; gap: .6rem; margin-bottom: .25rem; }
+.uz-auth-brand .mark { width: 44px; height: 44px; border-radius: 14px; background: var(--uz-accent); color: #0b141a; display: inline-flex; align-items: center; justify-content: center; }
+.uz-auth-card label { font-size: .85rem; color: var(--uz-muted); }
+.uz-auth-card .form-control { padding: .7rem .9rem; }

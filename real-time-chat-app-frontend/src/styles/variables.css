@@ -1,0 +1,40 @@
+:root, [data-bs-theme="dark"] {
+  --uz-bg: #0b141a; --uz-panel: #111b21; --uz-panel-2: #202c33; --uz-hover: #2a3942;
+  --uz-border: #26343d; --uz-text: #e9edef; --uz-muted: #8696a0;
+  --uz-accent: #00a884; --uz-accent-hover: #06cf9c; --uz-out: #005c4b; --uz-in: #202c33;
+  --uz-danger: #f15c6d; --uz-warn: #ffbc2d; --uz-radius: 12px;
+  --uz-font: "Plus Jakarta Sans", system-ui, sans-serif;
+  --bs-body-bg: var(--uz-bg); --bs-body-color: var(--uz-text); --bs-body-font-family: var(--uz-font);
+  --bs-border-color: var(--uz-border); --bs-secondary-color: var(--uz-muted); --bs-secondary-bg: var(--uz-panel-2);
+  --bs-tertiary-bg: var(--uz-panel); --bs-primary: var(--uz-accent); --bs-primary-rgb: 0,168,132;
+  --bs-link-color: var(--uz-accent-hover); --bs-link-color-rgb: 6,207,156; --bs-link-hover-color: var(--uz-accent);
+  --bs-border-radius: 10px; --bs-emphasis-color: #fff; --bs-danger-rgb: 241,92,109; --bs-success-rgb: 0,168,132;
+}
+body { font-family: var(--uz-font); background: var(--uz-bg); }
+.btn-primary { --bs-btn-bg: var(--uz-accent); --bs-btn-border-color: var(--uz-accent); --bs-btn-hover-bg: var(--uz-accent-hover); --bs-btn-hover-border-color: var(--uz-accent-hover); --bs-btn-active-bg: var(--uz-accent); --bs-btn-color: #0b141a; --bs-btn-hover-color: #0b141a; --bs-btn-disabled-bg: var(--uz-accent); --bs-btn-disabled-border-color: var(--uz-accent); font-weight: 600; }
+.form-control, .form-select { background-color: var(--uz-panel-2); border-color: var(--uz-border); color: var(--uz-text); }
+.form-control:focus, .form-select:focus { background-color: var(--uz-panel-2); color: var(--uz-text); border-color: var(--uz-accent); box-shadow: 0 0 0 .2rem rgba(0,168,132,.2); }
+.form-check-input:checked { background-color: var(--uz-accent); border-color: var(--uz-accent); }
+.uz-icon-btn { color: var(--uz-muted); border: 0; background: transparent; border-radius: 50%; padding: .4rem; display: inline-flex; align-items: center; justify-content: center; }
+.uz-icon-btn:hover { background: var(--uz-hover); color: var(--uz-text); }
+.uz-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg,#00a884,#1d6fa5); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+.uz-avatar.sm { width: 32px; height: 32px; font-size: .75rem; }
+.uz-avatar.group { background: linear-gradient(135deg,#7f66ff,#e26a9e); }
+* { scrollbar-width: thin; scrollbar-color: #374248 transparent; }
+::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: #374248; border-radius: 6px; }
+/* Toasts */
+.uz-toasts { position: fixed; bottom: 1.25rem; right: 1.25rem; z-index: 2000; display: flex; flex-direction: column; gap: .5rem; max-width: 360px; }
+.uz-toast { display: flex; gap: .6rem; align-items: flex-start; background: var(--uz-panel-2); border: 1px solid var(--uz-border); border-left: 4px solid var(--uz-accent); padding: .75rem .9rem; border-radius: var(--uz-radius); box-shadow: 0 10px 30px rgba(0,0,0,.45); animation: uzIn .25s ease; font-size: .9rem; }
+.uz-toast-error { border-left-color: var(--uz-danger); } .uz-toast-error svg:first-child { color: var(--uz-danger); }
+.uz-toast-success svg:first-child { color: var(--uz-accent); } .uz-toast span { flex: 1; }
+.uz-toast-close { background: none; border: 0; color: var(--uz-muted); }
+@keyframes uzIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+/* Modal */
+.uz-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(3px); z-index: 1500; display: flex; align-items: center; justify-content: center; padding: 1rem; animation: uzIn .15s; }
+.uz-modal { background: var(--uz-panel); border: 1px solid var(--uz-border); border-radius: 16px; width: 100%; max-width: 460px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+.uz-modal-lg { max-width: 620px; }
+.uz-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid var(--uz-border); }
+.uz-modal-body { padding: 1.25rem; overflow-y: auto; }
+.uz-modal-footer { padding: .9rem 1.25rem; border-top: 1px solid var(--uz-border); display: flex; justify-content: flex-end; gap: .5rem; }
+.uz-section-title { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--uz-muted); margin: 1rem 0 .5rem; font-weight: 700; }
+.uz-center { min-height: 100vh; display: flex; align-items: center; justify-content: center; color: var(--uz-muted); }

@@ -1,0 +1,6 @@
+/* UaiZap: Bootstrap 5 + CSS puro (sem Tailwind) */
+@import "bootstrap/dist/css/bootstrap.min.css";
+@import "./styles/variables.css";
+@import "./styles/chat.css";
+@import "./styles/auth.css";
+@import "./styles/admin.css";
