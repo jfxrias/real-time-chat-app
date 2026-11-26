@@ -1,5 +1,5 @@
 import { Crown, LogOut, Pencil, Shield, Trash2, UserMinus, UserPlus, Flag } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Modal } from "@/components/Modal";
 import { initials, useAuth } from "@/lib/auth";
 import { toast } from "@/lib/toast";
@@ -44,13 +44,24 @@ export function BroadcastModal({ groups, onClose }: { groups: Group[]; onClose: 
   </Modal>;
 }
 
+const REPORT_REASONS = [
+  "Spam ou flood",
+  "Assédio ou bullying",
+  "Discurso de ódio",
+  "Conteúdo impróprio ou ofensivo",
+  "Golpe ou fraude",
+  "Falsidade ideológica",
+  "Outro",
+] as const;
+
 export function ReportModal({ member, groupUuid, onClose }: { member: { userUuid: string; name: string }; groupUuid: string; onClose: () => void }) {
-  const [reason, setReason] = useState(""); const [busy, setBusy] = useState(false);
-  const send = async () => { setBusy(true); try { const r = await api.report({ reportedUuid: member.userUuid, groupUuid, reason: reason.trim() }); toast(r?.message || "Denúncia enviada.", "success"); onClose(); } catch { /* */ } finally { setBusy(false); } };
-  return <Modal title={`Denunciar ${member.name}`} onClose={onClose} footer={<><button className="btn btn-secondary" onClick={onClose}>Cancelar</button><button className="btn btn-danger" disabled={busy || !reason.trim()} onClick={send}>Enviar denúncia</button></>}>
-    <label className="form-label small text-secondary">Motivo</label>
-    <textarea className="form-control" rows={4} maxLength={255} value={reason} onChange={(e) => setReason(e.target.value.slice(0, 255))} />
-    <div className={`text-end small mt-1 ${reason.length >= 240 ? "text-warning" : "text-secondary"}`}>{reason.length}/255</div>
+  const id = useId(); const [reason, setReason] = useState(""); const [details, setDetails] = useState(""); const [busy, setBusy] = useState(false);
+  const finalReason = reason === "Outro" ? details.trim() : reason;
+  const send = async () => { if (!finalReason || busy) return; setBusy(true); try { const r = await api.report({ reportedUuid: member.userUuid, groupUuid, reason: finalReason }); toast(r?.message || "Denúncia enviada.", "success"); onClose(); } catch { /* */ } finally { setBusy(false); } };
+  return <Modal title={`Denunciar ${member.name}`} onClose={onClose} footer={<><button className="btn btn-secondary" onClick={onClose}>Cancelar</button><button className="btn btn-danger" disabled={busy || !finalReason} onClick={send}>Enviar denúncia</button></>}>
+    <div className="uz-section-title mt-0">Motivo</div>
+    <div className="d-flex flex-column gap-1">{REPORT_REASONS.map((option, i) => <div className="form-check" key={option}><input className="form-check-input" type="radio" name={`report-${id}`} id={`report-${id}-${i}`} checked={reason === option} onChange={() => setReason(option)} /><label className="form-check-label" htmlFor={`report-${id}-${i}`}>{option}</label></div>)}</div>
+    {reason === "Outro" && <div className="mt-3"><label className="form-label small text-secondary" htmlFor={`report-details-${id}`}>Descreva o motivo</label><textarea id={`report-details-${id}`} autoFocus className="form-control" rows={4} maxLength={255} placeholder="Descreva o motivo da denúncia" value={details} onChange={(e) => setDetails(e.target.value.slice(0, 255))} /><div className={`text-end small mt-1 ${details.length >= 240 ? "text-warning" : "text-secondary"}`}>{details.length}/255</div></div>}
   </Modal>;
 }
 
