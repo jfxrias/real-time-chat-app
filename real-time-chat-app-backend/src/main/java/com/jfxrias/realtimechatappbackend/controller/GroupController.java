@@ -74,6 +74,30 @@ public class GroupController {
         }
     }
 
+    @DeleteMapping("/{groupUuid}/members/{userUuid}")
+    public ResponseEntity<?> removeMember(
+            @PathVariable String groupUuid,
+            @PathVariable String userUuid,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        try {
+            if (authorization == null || !authorization.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body(Map.of("message", "Token não informado"));
+            }
+            String token = authorization.substring(7).trim();
+            String authenticatedUserUuid = jwtUtil.extractUserUuid(token);
+
+            groupService.removeMember(groupUuid, authenticatedUserUuid, userUuid);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Usuário removido do grupo",
+                    "groupUuid", groupUuid,
+                    "userUuid", userUuid
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @DeleteMapping({"", "/{groupUuid}", "/delete/{groupUuid}"})
     public ResponseEntity<?> deleteGroup(
             @PathVariable(value = "groupUuid", required = false) String pathGroupUuid,

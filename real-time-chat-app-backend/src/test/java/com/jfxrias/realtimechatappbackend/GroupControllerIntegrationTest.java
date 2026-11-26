@@ -10,6 +10,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -88,21 +89,140 @@ class GroupControllerIntegrationTest {
         assertEquals("Grupo excluído com sucesso", deleteBody.get("message").asText());
     }
 
+    @Test
+    void shouldRemoveMemberWhenRequesterIsGroupCreator() throws Exception {
+        TestUser creator = registerAndLogin("Criador remoção");
+        TestUser member = registerAndLogin("Membro remoção");
+
+        String groupUuid = createGroup(creator.uuid());
+        addMemberToGroup(groupUuid, creator.token(), member.uuid(), "MEMBER");
+
+        ResponseEntity<String> removeResponse = restTemplate.exchange(
+                baseUrl() + "/groups/" + groupUuid + "/members/" + member.uuid(),
+                HttpMethod.DELETE,
+                authenticatedRequest(Map.of(), creator.token()),
+                String.class
+        );
+
+        assertEquals(HttpStatus.OK, removeResponse.getStatusCode());
+        JsonNode body = objectMapper.readTree(removeResponse.getBody());
+        assertEquals("Usuário removido do grupo", body.get("message").asText());
+        assertEquals(groupUuid, body.get("groupUuid").asText());
+        assertEquals(member.uuid(), body.get("userUuid").asText());
+    }
+
+    @Test
+    void shouldRejectMemberRemovalWhenRequesterIsNotCreatorOrAdmin() throws Exception {
+        TestUser creator = registerAndLogin("Criador sem permissão externa");
+        TestUser member = registerAndLogin("Membro alvo");
+        TestUser outsider = registerAndLogin("Usuário externo");
+
+        String groupUuid = createGroup(creator.uuid());
+        addMemberToGroup(groupUuid, creator.token(), member.uuid(), "MEMBER");
+
+        try {
+            restTemplate.exchange(
+                    baseUrl() + "/groups/" + groupUuid + "/members/" + member.uuid(),
+                    HttpMethod.DELETE,
+                    authenticatedRequest(Map.of(), outsider.token()),
+                    String.class
+            );
+            fail("Expected outsider to be denied");
+        } catch (HttpClientErrorException ex) {
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+            JsonNode body = objectMapper.readTree(ex.getResponseBodyAsString());
+            assertEquals("Apenas o criador ou administradores podem remover usuários", body.get("message").asText());
+        }
+    }
+
+    @Test
+    void shouldRejectMemberRemovalWithoutToken() throws Exception {
+        TestUser creator = registerAndLogin("Criador sem token");
+        TestUser member = registerAndLogin("Membro sem token");
+
+        String groupUuid = createGroup(creator.uuid());
+        addMemberToGroup(groupUuid, creator.token(), member.uuid(), "MEMBER");
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        try {
+            restTemplate.exchange(
+                    baseUrl() + "/groups/" + groupUuid + "/members/" + member.uuid(),
+                    HttpMethod.DELETE,
+                    new HttpEntity<>(Map.of(), headers),
+                    String.class
+            );
+            fail("Expected missing token to be denied");
+        } catch (HttpClientErrorException ex) {
+            assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
+            JsonNode body = objectMapper.readTree(ex.getResponseBodyAsString());
+            assertEquals("Token não informado", body.get("message").asText());
+        }
+    }
+
     private String baseUrl() {
         return "http://localhost:" + port;
     }
 
-    private String registerUser(String name) {
+    private String createGroup(String creatorUuid) {
+        Map<String, Object> request = Map.of(
+                "groupName", "Grupo " + sequence,
+                "creatorUuid", creatorUuid
+        );
+        ResponseEntity<String> response = restTemplate.postForEntity(baseUrl() + "/groups", request, String.class);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        try {
+            return objectMapper.readTree(response.getBody()).get("groupUuid").asText();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse create group response", e);
+        }
+    }
+
+    private void addMemberToGroup(String groupUuid, String token, String userUuid, String role) {
+        ResponseEntity<String> response = restTemplate.exchange(
+                baseUrl() + "/groups/" + groupUuid + "/members",
+                HttpMethod.POST,
+                authenticatedRequest(Map.of("userUuid", userUuid, "role", role), token),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
+    private HttpEntity<Map<String, Object>> authenticatedRequest(Map<String, Object> body, String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+        return new HttpEntity<>(body, headers);
+    }
+
+    private TestUser registerAndLogin(String name) {
         String cpf = String.format("%011d", sequence++);
         RegisterRequestDTO request = new RegisterRequestDTO(name, cpf, "123456", false);
         ResponseEntity<String> response = restTemplate.postForEntity(baseUrl() + "/auth/register", request, String.class);
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        JsonNode body = null;
+
         try {
-            body = objectMapper.readTree(response.getBody());
+            JsonNode body = objectMapper.readTree(response.getBody());
+            String userUuid = body.get("userUuid").asText();
+
+            ResponseEntity<String> loginResponse = restTemplate.postForEntity(
+                    baseUrl() + "/auth/login",
+                    Map.of("cpf", cpf, "password", "123456"),
+                    String.class
+            );
+            assertEquals(HttpStatus.OK, loginResponse.getStatusCode());
+            String token = objectMapper.readTree(loginResponse.getBody()).get("token").asText();
+            return new TestUser(userUuid, token);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse register response", e);
+            throw new RuntimeException("Failed to register/login user", e);
         }
-        return body.get("userUuid").asText();
+    }
+
+    private String registerUser(String name) {
+        return registerAndLogin(name).uuid();
+    }
+
+    private record TestUser(String uuid, String token) {
     }
 }

@@ -101,6 +101,32 @@ public class GroupService {
         return groupMemberRepository.save(new GroupMember(normalizedGroupUuid, normalizedTargetUuid, normalizedRole));
     }
 
+    public void removeMember(String groupUuid, String authenticatedUserUuid, String targetUserUuid) {
+        String normalizedGroupUuid = normalizeRequired(groupUuid, "UUID do grupo é obrigatório");
+        String normalizedAuthenticatedUuid = normalizeRequired(authenticatedUserUuid, "Usuário autenticado é obrigatório");
+        String normalizedTargetUuid = normalizeRequired(targetUserUuid, "UUID do usuário é obrigatório");
+
+        Group group = groupRepository.findById(normalizedGroupUuid)
+                .orElseThrow(() -> new IllegalArgumentException("Grupo não encontrado"));
+
+        boolean isCreator = group.getCreatorUuid().equals(normalizedAuthenticatedUuid);
+        boolean isAdmin = groupMemberRepository
+                .findById(new GroupMemberId(normalizedGroupUuid, normalizedAuthenticatedUuid))
+                .map(member -> "ADMIN".equalsIgnoreCase(member.getRole()))
+                .orElse(false);
+
+        if (!isCreator && !isAdmin) {
+            throw new IllegalArgumentException("Apenas o criador ou administradores podem remover usuários");
+        }
+
+        GroupMemberId targetMembershipId = new GroupMemberId(normalizedGroupUuid, normalizedTargetUuid);
+        if (!groupMemberRepository.existsById(targetMembershipId)) {
+            throw new IllegalArgumentException("Usuário não pertence ao grupo");
+        }
+
+        groupMemberRepository.deleteById(targetMembershipId);
+    }
+
     private String normalizeRequired(String value, String message) {
         String normalized = value == null ? null : value.trim();
         if (normalized == null || normalized.isBlank()) {
