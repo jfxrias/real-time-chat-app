@@ -9,6 +9,8 @@ import com.jfxrias.realtimechatappbackend.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class ReportService {
     private final ReportRepository reportRepository;
@@ -49,6 +51,18 @@ public class ReportService {
         }
 
         return reportRepository.save(new Report(normalizedReporter, normalizedReported, normalizedGroup, normalizedReason));
+    }
+
+    public List<Report> getAllReports(String adminUuid) {
+        String normalizedAdminUuid = normalizeRequired(adminUuid, "UUID do administrador é obrigatório");
+        User admin = userRepository.findById(normalizedAdminUuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+
+        if (!Boolean.TRUE.equals(admin.getIsAdmin())) {
+            throw new IllegalArgumentException("Apenas administradores da plataforma podem realizar esta operação");
+        }
+
+        return reportRepository.findAllByOrderByReportedAtDesc();
     }
 
     private String normalizeRequired(String value, String message) {

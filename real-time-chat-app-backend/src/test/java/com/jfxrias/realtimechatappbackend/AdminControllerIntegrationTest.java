@@ -128,6 +128,76 @@ class AdminControllerIntegrationTest {
         );
     }
 
+    @Test
+    void shouldListAdminResourcesAndReportsWhenAdminAndBlockRegularUser() throws Exception {
+        TestUser admin = registerAndLogin("Admin listagens", true);
+        TestUser regular = registerAndLogin("Usuário regular", false);
+        TestUser reported = registerAndLogin("Usuário reportado", false);
+        String groupUuid = createGroup(regular, "Grupo report");
+
+        restTemplate.exchange(
+                baseUrl() + "/reports",
+                HttpMethod.POST,
+                authenticatedRequest(Map.of(
+                        "reportedUuid", reported.uuid(),
+                        "groupUuid", groupUuid,
+                        "reason", "Teste admin reports"
+                ), regular.token()),
+                String.class
+        );
+
+        ResponseEntity<String> usersResponse = restTemplate.exchange(
+                baseUrl() + "/admin/users",
+                HttpMethod.GET,
+                authenticatedRequest(Map.of(), admin.token()),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, usersResponse.getStatusCode());
+        assertTrue(objectMapper.readTree(usersResponse.getBody()).isArray());
+
+        ResponseEntity<String> groupsResponse = restTemplate.exchange(
+                baseUrl() + "/admin/groups",
+                HttpMethod.GET,
+                authenticatedRequest(Map.of(), admin.token()),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, groupsResponse.getStatusCode());
+        assertTrue(objectMapper.readTree(groupsResponse.getBody()).isArray());
+
+        ResponseEntity<String> reportsResponse = restTemplate.exchange(
+                baseUrl() + "/reports",
+                HttpMethod.GET,
+                authenticatedRequest(Map.of(), admin.token()),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, reportsResponse.getStatusCode());
+        JsonNode reportsBody = objectMapper.readTree(reportsResponse.getBody());
+        assertTrue(reportsBody.isArray());
+        assertTrue(reportsBody.size() >= 1);
+
+        assertError(
+                () -> restTemplate.exchange(
+                        baseUrl() + "/admin/users",
+                        HttpMethod.GET,
+                        authenticatedRequest(Map.of(), regular.token()),
+                        String.class
+                ),
+                HttpStatus.BAD_REQUEST,
+                "Apenas administradores da plataforma podem realizar esta operação"
+        );
+
+        assertError(
+                () -> restTemplate.exchange(
+                        baseUrl() + "/reports",
+                        HttpMethod.GET,
+                        authenticatedRequest(Map.of(), regular.token()),
+                        String.class
+                ),
+                HttpStatus.BAD_REQUEST,
+                "Apenas administradores da plataforma podem realizar esta operação"
+        );
+    }
+
     private String createGroup(TestUser creator, String name) {
         ResponseEntity<String> response = restTemplate.exchange(
                 baseUrl() + "/groups",

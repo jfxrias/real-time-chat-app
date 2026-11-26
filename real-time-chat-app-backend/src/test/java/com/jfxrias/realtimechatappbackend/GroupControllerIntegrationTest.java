@@ -12,6 +12,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
@@ -29,7 +30,7 @@ class GroupControllerIntegrationTest {
     @LocalServerPort
     private int port;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate = new RestTemplate(new HttpComponentsClientHttpRequestFactory());
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
@@ -156,6 +157,61 @@ class GroupControllerIntegrationTest {
                 ),
                 HttpStatus.UNAUTHORIZED
         );
+    }
+
+    @Test
+    void shouldUpdateGroupWhenRequesterIsCreatorAndRejectWhenNotCreator() throws Exception {
+        TestUser creator = registerAndLogin("Criador update");
+        TestUser outsider = registerAndLogin("Fora update");
+        String groupUuid = createGroup(creator.uuid());
+
+        ResponseEntity<String> okResponse = restTemplate.exchange(
+                baseUrl() + "/groups/" + groupUuid,
+                HttpMethod.PATCH,
+                authenticatedRequest(Map.of("groupName", "Novo Nome"), creator.token()),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, okResponse.getStatusCode());
+
+        assertStatus(
+                () -> restTemplate.exchange(
+                        baseUrl() + "/groups/" + groupUuid,
+                        HttpMethod.PATCH,
+                        authenticatedRequest(Map.of("groupName", "Tentativa"), outsider.token()),
+                        String.class
+                ),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @Test
+    void shouldListGroupsAndMembers() throws Exception {
+        TestUser creator = registerAndLogin("Criador listagem");
+        TestUser member = registerAndLogin("Membro listagem");
+        String groupUuid = createGroup(creator.uuid());
+        addMemberToGroup(groupUuid, creator.token(), creator.uuid(), "MEMBER");
+        addMemberToGroup(groupUuid, creator.token(), member.uuid(), "MEMBER");
+
+        ResponseEntity<String> groupsResponse = restTemplate.exchange(
+                baseUrl() + "/groups",
+                HttpMethod.GET,
+                authenticatedRequest(Map.of(), creator.token()),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, groupsResponse.getStatusCode());
+        JsonNode groupsBody = objectMapper.readTree(groupsResponse.getBody());
+        assertTrue(groupsBody.isArray());
+
+        ResponseEntity<String> membersResponse = restTemplate.exchange(
+                baseUrl() + "/groups/" + groupUuid + "/members",
+                HttpMethod.GET,
+                authenticatedRequest(Map.of(), creator.token()),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, membersResponse.getStatusCode());
+        JsonNode membersBody = objectMapper.readTree(membersResponse.getBody());
+        assertTrue(membersBody.isArray());
+        assertTrue(membersBody.size() >= 2);
     }
 
     private String baseUrl() {

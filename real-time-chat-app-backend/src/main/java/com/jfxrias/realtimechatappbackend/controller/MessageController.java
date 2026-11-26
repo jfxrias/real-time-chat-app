@@ -128,6 +128,54 @@ public class MessageController {
         }
     }
 
+    @GetMapping("/private/{otherUserUuid}")
+    public ResponseEntity<?> getPrivateMessages(
+            @PathVariable String otherUserUuid,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        try {
+            String authenticatedUserUuid = extractAuthenticatedUserUuid(authorization);
+            List<Message> messages = messageService.getPrivateMessages(authenticatedUserUuid, otherUserUuid);
+            return ResponseEntity.ok(messages.stream().map(message -> Map.of(
+                    "messageUuid", message.getMessageUuid(),
+                    "senderUuid", message.getSenderUuid(),
+                    "content", message.getContent(),
+                    "sentAt", message.getSentAt(),
+                    "editedAt", message.getEditedAt()
+            )).toList());
+        } catch (IllegalArgumentException e) {
+            boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                    || e.getMessage().equals("Token não informado");
+            return tokenError
+                    ? ResponseEntity.status(401).body(Map.of("message", e.getMessage()))
+                    : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/groups/{groupUuid}")
+    public ResponseEntity<?> getGroupMessages(
+            @PathVariable String groupUuid,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        try {
+            String authenticatedUserUuid = extractAuthenticatedUserUuid(authorization);
+            List<Message> messages = messageService.getGroupMessages(authenticatedUserUuid, groupUuid);
+            return ResponseEntity.ok(messages.stream().map(message -> Map.of(
+                    "messageUuid", message.getMessageUuid(),
+                    "senderUuid", message.getSenderUuid(),
+                    "content", message.getContent(),
+                    "sentAt", message.getSentAt(),
+                    "editedAt", message.getEditedAt()
+            )).toList());
+        } catch (IllegalArgumentException e) {
+            boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                    || e.getMessage().equals("Token não informado");
+            return tokenError
+                    ? ResponseEntity.status(401).body(Map.of("message", e.getMessage()))
+                    : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
     private String extractAuthenticatedUserUuid(String authorization) {
         if (authorization == null || !authorization.startsWith("Bearer ")) {
             throw new IllegalArgumentException("Token não informado");

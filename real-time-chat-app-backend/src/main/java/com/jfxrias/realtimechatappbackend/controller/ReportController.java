@@ -7,6 +7,7 @@ import com.jfxrias.realtimechatappbackend.util.JwtUtil;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -48,6 +49,22 @@ public class ReportController {
                     "reportedAt", report.getReportedAt(),
                     "message", "Usuário reportado com sucesso"
             ));
+        } catch (IllegalArgumentException e) {
+            boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                    || e.getMessage().equals("Token não informado");
+            return tokenError
+                    ? ResponseEntity.status(401).body(Map.of("message", e.getMessage()))
+                    : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @GetMapping
+    public ResponseEntity<?> getAllReports(
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        try {
+            String adminUuid = extractAuthenticatedUserUuid(authorization);
+            return ResponseEntity.ok(reportService.getAllReports(adminUuid));
         } catch (IllegalArgumentException e) {
             boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
                     || e.getMessage().equals("Token não informado");

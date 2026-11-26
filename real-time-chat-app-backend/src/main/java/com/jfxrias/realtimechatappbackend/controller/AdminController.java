@@ -5,6 +5,7 @@ import com.jfxrias.realtimechatappbackend.entity.User;
 import com.jfxrias.realtimechatappbackend.service.AdminService;
 import com.jfxrias.realtimechatappbackend.util.JwtUtil;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -54,6 +55,38 @@ public class AdminController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         return handleGroupStatusUpdate(groupUuid, authorization, true);
+    }
+
+    @GetMapping("/users")
+    public ResponseEntity<?> getAllUsers(
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        try {
+            String adminUuid = extractAuthenticatedUserUuid(authorization);
+            return ResponseEntity.ok(adminService.getAllUsers(adminUuid));
+        } catch (IllegalArgumentException e) {
+            boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                    || e.getMessage().equals("Token não informado");
+            return tokenError
+                    ? ResponseEntity.status(401).body(Map.of("message", e.getMessage()))
+                    : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/groups")
+    public ResponseEntity<?> getAllGroups(
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        try {
+            String adminUuid = extractAuthenticatedUserUuid(authorization);
+            return ResponseEntity.ok(adminService.getAllGroups(adminUuid));
+        } catch (IllegalArgumentException e) {
+            boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                    || e.getMessage().equals("Token não informado");
+            return tokenError
+                    ? ResponseEntity.status(401).body(Map.of("message", e.getMessage()))
+                    : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
     private ResponseEntity<?> handleUserStatusUpdate(String userUuid, String authorization, boolean isActive) {

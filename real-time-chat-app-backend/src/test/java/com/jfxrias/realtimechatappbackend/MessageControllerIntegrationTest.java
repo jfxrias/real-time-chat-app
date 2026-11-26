@@ -362,6 +362,74 @@ class MessageControllerIntegrationTest {
         assertTrue(messageRepository.findById(messageUuid).orElseThrow().getIsDeletedBySender());
     }
 
+    @Test
+    void shouldHideDeletedPrivateMessageFromSenderOnGetPrivateMessages() throws Exception {
+        TestUser sender = registerAndLogin("Sender private list");
+        TestUser receiver = registerAndLogin("Receiver private list");
+
+        ResponseEntity<String> sendResponse = restTemplate.exchange(
+                baseUrl() + "/messages/private",
+                HttpMethod.POST,
+                authenticatedRequest(Map.of("receiverUuid", receiver.uuid(), "content", "Oculta privada"), sender.token()),
+                String.class
+        );
+        String messageUuid = objectMapper.readTree(sendResponse.getBody()).get("messageUuid").asText();
+
+        restTemplate.exchange(
+                baseUrl() + "/messages/" + messageUuid + "/delete-for-me",
+                HttpMethod.PATCH,
+                authenticatedRequest(Map.of(), sender.token()),
+                String.class
+        );
+
+        ResponseEntity<String> listResponse = restTemplate.exchange(
+                baseUrl() + "/messages/private/" + receiver.uuid(),
+                HttpMethod.GET,
+                authenticatedRequest(Map.of(), sender.token()),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, listResponse.getStatusCode());
+        JsonNode listBody = objectMapper.readTree(listResponse.getBody());
+        assertTrue(listBody.isArray());
+        for (JsonNode n : listBody) {
+            assertNotEquals(messageUuid, n.get("messageUuid").asText());
+        }
+    }
+
+    @Test
+    void shouldHideDeletedGroupMessageFromSenderOnGetGroupMessages() throws Exception {
+        TestUser sender = registerAndLogin("Sender group list");
+        String groupUuid = createGroup(sender, "Grupo listagem");
+
+        ResponseEntity<String> sendResponse = restTemplate.exchange(
+                baseUrl() + "/messages/groups",
+                HttpMethod.POST,
+                authenticatedRequest(Map.of("groupUuids", List.of(groupUuid), "content", "Oculta grupo"), sender.token()),
+                String.class
+        );
+        String messageUuid = objectMapper.readTree(sendResponse.getBody()).get("deliveries").get(0).get("messageUuid").asText();
+
+        restTemplate.exchange(
+                baseUrl() + "/messages/" + messageUuid + "/delete-for-me",
+                HttpMethod.PATCH,
+                authenticatedRequest(Map.of(), sender.token()),
+                String.class
+        );
+
+        ResponseEntity<String> listResponse = restTemplate.exchange(
+                baseUrl() + "/messages/groups/" + groupUuid,
+                HttpMethod.GET,
+                authenticatedRequest(Map.of(), sender.token()),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, listResponse.getStatusCode());
+        JsonNode listBody = objectMapper.readTree(listResponse.getBody());
+        assertTrue(listBody.isArray());
+        for (JsonNode n : listBody) {
+            assertNotEquals(messageUuid, n.get("messageUuid").asText());
+        }
+    }
+
     private String createGroup(TestUser creator, String name) {
         ResponseEntity<String> response = restTemplate.exchange(
                 baseUrl() + "/groups",

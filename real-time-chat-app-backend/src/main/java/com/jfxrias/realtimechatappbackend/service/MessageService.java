@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.time.LocalDateTime;
@@ -126,6 +127,52 @@ public class MessageService {
 
         message.setIsDeletedBySender(true);
         messageRepository.save(message);
+    }
+
+    public List<Message> getPrivateMessages(String authenticatedUserUuid, String otherUserUuid) {
+        String normalizedAuthenticatedUser = normalizeRequired(authenticatedUserUuid, "Usuário autenticado é obrigatório");
+        String normalizedOtherUser = normalizeRequired(otherUserUuid, "UUID do usuário é obrigatório");
+
+        userRepository.findById(normalizedAuthenticatedUser)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário autenticado não encontrado"));
+        userRepository.findById(normalizedOtherUser)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+
+        List<String> messageUuids = privateMessageRepository.findConversationMessageUuids(
+                normalizedAuthenticatedUser,
+                normalizedOtherUser
+        );
+
+        return messageRepository.findAllById(messageUuids).stream()
+                .filter(message -> !(normalizedAuthenticatedUser.equals(message.getSenderUuid())
+                        && Boolean.TRUE.equals(message.getIsDeletedBySender())))
+                .sorted(Comparator.comparing(Message::getSentAt))
+                .toList();
+    }
+
+    public List<Message> getGroupMessages(String authenticatedUserUuid, String groupUuid) {
+        String normalizedAuthenticatedUser = normalizeRequired(authenticatedUserUuid, "Usuário autenticado é obrigatório");
+        String normalizedGroupUuid = normalizeRequired(groupUuid, "UUID do grupo é obrigatório");
+
+        userRepository.findById(normalizedAuthenticatedUser)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário autenticado não encontrado"));
+
+        groupRepository.findById(normalizedGroupUuid)
+                .orElseThrow(() -> new IllegalArgumentException("Grupo não encontrado"));
+
+        if (!groupMemberRepository.existsById(new GroupMemberId(normalizedGroupUuid, normalizedAuthenticatedUser))) {
+            throw new IllegalArgumentException("Usuário não participa do grupo");
+        }
+
+        List<String> messageUuids = groupMessageRepository.findByTargetGroupUuid(normalizedGroupUuid).stream()
+                .map(GroupMessage::getMessageUuid)
+                .toList();
+
+        return messageRepository.findAllById(messageUuids).stream()
+                .filter(message -> !(normalizedAuthenticatedUser.equals(message.getSenderUuid())
+                        && Boolean.TRUE.equals(message.getIsDeletedBySender())))
+                .sorted(Comparator.comparing(Message::getSentAt))
+                .toList();
     }
 
     private String normalizeRequired(String value, String message) {

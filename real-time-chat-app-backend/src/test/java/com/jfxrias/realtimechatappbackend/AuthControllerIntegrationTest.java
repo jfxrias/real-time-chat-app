@@ -21,6 +21,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -218,11 +219,92 @@ class AuthControllerIntegrationTest {
         assertFalse(body.get("secondUserUuid").asText().isBlank());
     }
 
+    @Test
+    void shouldGetMeUsersFriendshipsAndDeleteFriendship() throws Exception {
+        TestUser requester = registerAndLogin("Requester");
+        TestUser friend = registerAndLogin("Friend");
+
+        ResponseEntity<String> createFriendship = restTemplate.exchange(
+                baseUrl() + "/auth/friendships",
+                HttpMethod.POST,
+                authenticatedRequest(Map.of("userUuid", friend.uuid()), requester.token()),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, createFriendship.getStatusCode());
+
+        ResponseEntity<String> meResponse = restTemplate.exchange(
+                baseUrl() + "/auth/me",
+                HttpMethod.GET,
+                authenticatedRequest(Map.of(), requester.token()),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, meResponse.getStatusCode());
+        JsonNode meBody = objectMapper.readTree(meResponse.getBody());
+        assertEquals(requester.uuid(), meBody.get("userUuid").asText());
+
+        ResponseEntity<String> usersResponse = restTemplate.exchange(
+                baseUrl() + "/auth/users",
+                HttpMethod.GET,
+                authenticatedRequest(Map.of(), requester.token()),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, usersResponse.getStatusCode());
+        JsonNode usersBody = objectMapper.readTree(usersResponse.getBody());
+        assertTrue(usersBody.isArray());
+        assertTrue(usersBody.size() >= 2);
+
+        ResponseEntity<String> friendshipsResponse = restTemplate.exchange(
+                baseUrl() + "/auth/friendships",
+                HttpMethod.GET,
+                authenticatedRequest(Map.of(), requester.token()),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, friendshipsResponse.getStatusCode());
+        JsonNode friendshipsBody = objectMapper.readTree(friendshipsResponse.getBody());
+        assertTrue(friendshipsBody.isArray());
+        assertTrue(friendshipsBody.size() >= 1);
+
+        ResponseEntity<String> deleteResponse = restTemplate.exchange(
+                baseUrl() + "/auth/friendships/" + friend.uuid(),
+                HttpMethod.DELETE,
+                authenticatedRequest(Map.of(), requester.token()),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, deleteResponse.getStatusCode());
+    }
+
+    private TestUser registerAndLogin(String name) throws Exception {
+        String cpf = uniqueCpf();
+        ResponseEntity<String> registerResponse = restTemplate.postForEntity(
+                baseUrl() + "/auth/register",
+                new RegisterRequestDTO(name, cpf, "123456", false),
+                String.class
+        );
+        String uuid = objectMapper.readTree(registerResponse.getBody()).get("userUuid").asText();
+
+        ResponseEntity<String> loginResponse = restTemplate.postForEntity(
+                baseUrl() + "/auth/login",
+                Map.of("cpf", cpf, "password", "123456"),
+                String.class
+        );
+        String token = objectMapper.readTree(loginResponse.getBody()).get("token").asText();
+        return new TestUser(uuid, token);
+    }
+
+    private HttpEntity<Map<String, Object>> authenticatedRequest(Map<String, Object> body, String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        return new HttpEntity<>(body, headers);
+    }
+
     private String baseUrl() {
         return "http://localhost:" + port;
     }
 
     private String uniqueCpf() {
         return String.format("%011d", sequence++);
+    }
+
+    private record TestUser(String uuid, String token) {
     }
 }

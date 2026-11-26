@@ -2,9 +2,13 @@ package com.jfxrias.realtimechatappbackend.service;
 
 import com.jfxrias.realtimechatappbackend.entity.Group;
 import com.jfxrias.realtimechatappbackend.entity.User;
+import com.jfxrias.realtimechatappbackend.dto.GroupResponseDTO;
+import com.jfxrias.realtimechatappbackend.dto.UserResponseDTO;
 import com.jfxrias.realtimechatappbackend.repository.GroupRepository;
 import com.jfxrias.realtimechatappbackend.repository.UserRepository;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class AdminService {
@@ -33,6 +37,36 @@ public class AdminService {
                 .orElseThrow(() -> new IllegalArgumentException("Grupo não encontrado"));
         targetGroup.setStatus(isActive ? "ACTIVE" : "INACTIVE");
         return groupRepository.save(targetGroup);
+    }
+
+    public List<UserResponseDTO> getAllUsers(String adminUuid) {
+        User admin = findRequiredUser(normalizeRequired(adminUuid, "UUID do administrador é obrigatório"));
+        ensurePlatformAdmin(admin);
+
+        return userRepository.findAll().stream()
+                .map(user -> new UserResponseDTO(
+                        user.getUserUuid(),
+                        user.getName(),
+                        user.getCpf(),
+                        user.getIsAdmin(),
+                        user.getIsActive()
+                ))
+                .toList();
+    }
+
+    public List<GroupResponseDTO> getAllGroups(String adminUuid) {
+        User admin = findRequiredUser(normalizeRequired(adminUuid, "UUID do administrador é obrigatório"));
+        ensurePlatformAdmin(admin);
+
+        return groupRepository.findAll().stream()
+                .map(group -> new GroupResponseDTO(
+                        group.getGroupUuid(),
+                        group.getGroupName(),
+                        group.getCreatorUuid(),
+                        group.getStatus(),
+                        group.getCreatedAt()
+                ))
+                .toList();
     }
 
     private User findRequiredUser(String userUuid) {
