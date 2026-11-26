@@ -175,6 +175,49 @@ class AuthControllerIntegrationTest {
         }
     }
 
+    @Test
+    void shouldCreateFriendshipBetweenAuthenticatedAndTargetUser() throws Exception {
+        String requesterCpf = uniqueCpf();
+        String targetCpf = uniqueCpf();
+        restTemplate.postForEntity(
+                baseUrl() + "/auth/register",
+                new RegisterRequestDTO("Solicitante", requesterCpf, "123456", false),
+                String.class
+        );
+        ResponseEntity<String> targetRegisterResponse = restTemplate.postForEntity(
+                baseUrl() + "/auth/register",
+                new RegisterRequestDTO("Alvo", targetCpf, "123456", false),
+                String.class
+        );
+        JsonNode targetRegisterBody = objectMapper.readTree(targetRegisterResponse.getBody());
+        String targetUserUuid = targetRegisterBody.get("userUuid").asText();
+
+        ResponseEntity<String> loginResponse = restTemplate.postForEntity(
+                baseUrl() + "/auth/login",
+                Map.of("cpf", requesterCpf, "password", "123456"),
+                String.class
+        );
+        String token = objectMapper.readTree(loginResponse.getBody()).get("token").asText();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(Map.of("userUuid", targetUserUuid), headers);
+
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                baseUrl() + "/auth/friendships",
+                requestEntity,
+                String.class
+        );
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        JsonNode body = objectMapper.readTree(response.getBody());
+        assertEquals("Amizade criada com sucesso", body.get("message").asText());
+        assertNotNull(body.get("firstUserUuid"));
+        assertNotNull(body.get("secondUserUuid"));
+        assertFalse(body.get("firstUserUuid").asText().isBlank());
+        assertFalse(body.get("secondUserUuid").asText().isBlank());
+    }
+
     private String baseUrl() {
         return "http://localhost:" + port;
     }

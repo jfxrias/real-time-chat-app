@@ -3,9 +3,11 @@ package com.jfxrias.realtimechatappbackend.controller;
 import com.jfxrias.realtimechatappbackend.dto.AuthResponseDTO;
 import com.jfxrias.realtimechatappbackend.dto.LoginRequestDTO;
 import com.jfxrias.realtimechatappbackend.dto.RegisterRequestDTO;
+import com.jfxrias.realtimechatappbackend.dto.CreateFriendshipRequestDTO;
 import com.jfxrias.realtimechatappbackend.dto.UpdateNameRequestDTO;
 import com.jfxrias.realtimechatappbackend.dto.UpdatePasswordRequestDTO;
 import com.jfxrias.realtimechatappbackend.dto.UserResponseDTO;
+import com.jfxrias.realtimechatappbackend.entity.Friendship;
 import com.jfxrias.realtimechatappbackend.entity.User;
 import com.jfxrias.realtimechatappbackend.service.AuthService;
 import com.jfxrias.realtimechatappbackend.util.JwtUtil;
@@ -76,6 +78,29 @@ public class AuthController {
             String authenticatedUserUuid = extractAuthenticatedUserUuid(authorization);
             authService.updatePassword(authenticatedUserUuid, request.password());
             return ResponseEntity.ok(Map.of("message", "Senha atualizada com sucesso"));
+        } catch (IllegalArgumentException e) {
+            boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                    || e.getMessage().equals("Token não informado");
+            return tokenError
+                    ? ResponseEntity.status(401).body(Map.of("message", e.getMessage()))
+                    : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/friendships")
+    public ResponseEntity<?> createFriendship(
+            @Valid @RequestBody CreateFriendshipRequestDTO request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        try {
+            String authenticatedUserUuid = extractAuthenticatedUserUuid(authorization);
+            Friendship friendship = authService.addFriendship(authenticatedUserUuid, request.userUuid());
+            return ResponseEntity.ok(Map.of(
+                    "message", "Amizade criada com sucesso",
+                    "firstUserUuid", friendship.getId().getFirstUserUuid(),
+                    "secondUserUuid", friendship.getId().getSecondUserUuid(),
+                    "createdAt", friendship.getCreatedAt()
+            ));
         } catch (IllegalArgumentException e) {
             boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
                     || e.getMessage().equals("Token não informado");

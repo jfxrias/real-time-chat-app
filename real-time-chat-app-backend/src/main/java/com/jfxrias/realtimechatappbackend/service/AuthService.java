@@ -1,7 +1,10 @@
 package com.jfxrias.realtimechatappbackend.service;
 
 import com.jfxrias.realtimechatappbackend.dto.RegisterRequestDTO;
+import com.jfxrias.realtimechatappbackend.entity.Friendship;
+import com.jfxrias.realtimechatappbackend.entity.FriendshipId;
 import com.jfxrias.realtimechatappbackend.entity.User;
+import com.jfxrias.realtimechatappbackend.repository.FriendshipRepository;
 import com.jfxrias.realtimechatappbackend.repository.UserRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -11,10 +14,12 @@ import java.util.Optional;
 @Service
 public class AuthService {
     private final UserRepository userRepository;
+    private final FriendshipRepository friendshipRepository;
     private final BCryptPasswordEncoder passwordEncoder;
 
-    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder) {
+    public AuthService(UserRepository userRepository, FriendshipRepository friendshipRepository, BCryptPasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.friendshipRepository = friendshipRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -87,5 +92,39 @@ public class AuthService {
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
         user.setPasswordHash(passwordEncoder.encode(password));
         userRepository.save(user);
+    }
+
+    public Friendship addFriendship(String authenticatedUserUuid, String targetUserUuid) {
+        String normalizedAuthenticatedUuid = normalizeRequired(authenticatedUserUuid, "Usuário autenticado é obrigatório");
+        String normalizedTargetUuid = normalizeRequired(targetUserUuid, "UUID do usuário é obrigatório");
+
+        if (normalizedAuthenticatedUuid.equals(normalizedTargetUuid)) {
+            throw new IllegalArgumentException("Não é possível adicionar a si mesmo");
+        }
+
+        userRepository.findById(normalizedAuthenticatedUuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário autenticado não encontrado"));
+        userRepository.findById(normalizedTargetUuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário a adicionar não encontrado"));
+
+        String firstUserUuid = normalizedAuthenticatedUuid.compareTo(normalizedTargetUuid) < 0
+                ? normalizedAuthenticatedUuid : normalizedTargetUuid;
+        String secondUserUuid = normalizedAuthenticatedUuid.compareTo(normalizedTargetUuid) < 0
+                ? normalizedTargetUuid : normalizedAuthenticatedUuid;
+
+        FriendshipId friendshipId = new FriendshipId(firstUserUuid, secondUserUuid);
+        if (friendshipRepository.existsById(friendshipId)) {
+            throw new IllegalArgumentException("Amizade já existe");
+        }
+
+        return friendshipRepository.save(new Friendship(firstUserUuid, secondUserUuid));
+    }
+
+    private String normalizeRequired(String value, String message) {
+        String normalized = value == null ? null : value.trim();
+        if (normalized == null || normalized.isBlank()) {
+            throw new IllegalArgumentException(message);
+        }
+        return normalized;
     }
 }
