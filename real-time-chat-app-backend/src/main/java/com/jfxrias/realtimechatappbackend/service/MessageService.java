@@ -2,6 +2,7 @@ package com.jfxrias.realtimechatappbackend.service;
 
 import com.jfxrias.realtimechatappbackend.entity.*;
 import com.jfxrias.realtimechatappbackend.repository.*;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,19 +20,22 @@ public class MessageService {
     private final UserRepository userRepository;
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public MessageService(MessageRepository messageRepository,
                           PrivateMessageRepository privateMessageRepository,
                           GroupMessageRepository groupMessageRepository,
                           UserRepository userRepository,
                           GroupRepository groupRepository,
-                          GroupMemberRepository groupMemberRepository) {
+                          GroupMemberRepository groupMemberRepository,
+                          SimpMessagingTemplate messagingTemplate) {
         this.messageRepository = messageRepository;
         this.privateMessageRepository = privateMessageRepository;
         this.groupMessageRepository = groupMessageRepository;
         this.userRepository = userRepository;
         this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @Transactional
@@ -47,6 +51,15 @@ public class MessageService {
 
         Message message = messageRepository.save(new Message(normalizedSender, normalizedContent));
         privateMessageRepository.save(new PrivateMessage(message.getMessageUuid(), normalizedReceiver));
+        PrivateRealtimeMessageDTO privateDto = new PrivateRealtimeMessageDTO(
+                message.getMessageUuid(),
+                message.getSenderUuid(),
+                normalizedReceiver,
+                message.getContent(),
+                message.getSentAt()
+        );
+        messagingTemplate.convertAndSend("/topic/private/" + normalizedReceiver, privateDto);
+        messagingTemplate.convertAndSend("/topic/private/" + normalizedSender, privateDto);
         return message;
     }
 
@@ -80,6 +93,14 @@ public class MessageService {
 
             Message message = messageRepository.save(new Message(normalizedSender, normalizedContent));
             groupMessageRepository.save(new GroupMessage(message.getMessageUuid(), groupUuid));
+            GroupRealtimeMessageDTO groupDto = new GroupRealtimeMessageDTO(
+                    message.getMessageUuid(),
+                    message.getSenderUuid(),
+                    groupUuid,
+                    message.getContent(),
+                    message.getSentAt()
+            );
+            messagingTemplate.convertAndSend("/topic/groups/" + groupUuid, groupDto);
             sentMessages.add(message);
         }
         return sentMessages;
@@ -189,5 +210,23 @@ public class MessageService {
             throw new IllegalArgumentException("Conteúdo da mensagem é obrigatório");
         }
         return normalized;
+    }
+
+    private record PrivateRealtimeMessageDTO(
+            String messageUuid,
+            String senderUuid,
+            String receiverUuid,
+            String content,
+            LocalDateTime sentAt
+    ) {
+    }
+
+    private record GroupRealtimeMessageDTO(
+            String messageUuid,
+            String senderUuid,
+            String targetGroupUuid,
+            String content,
+            LocalDateTime sentAt
+    ) {
     }
 }
