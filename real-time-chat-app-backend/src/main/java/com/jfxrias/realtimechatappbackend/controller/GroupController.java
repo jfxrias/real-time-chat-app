@@ -7,6 +7,7 @@ import com.jfxrias.realtimechatappbackend.entity.Group;
 import com.jfxrias.realtimechatappbackend.service.GroupService;
 import com.jfxrias.realtimechatappbackend.util.JwtUtil;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -82,9 +83,14 @@ public class GroupController {
     ) {
         try {
             if (authorization == null || !authorization.startsWith("Bearer ")) {
-                return ResponseEntity.status(401).body(Map.of("message", "Token não informado"));
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("message", "Token não informado"));
             }
             String token = authorization.substring(7).trim();
+            if (token.isBlank()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("message", "Token não informado"));
+            }
             String authenticatedUserUuid = jwtUtil.extractUserUuid(token);
 
             groupService.removeMember(groupUuid, authenticatedUserUuid, userUuid);

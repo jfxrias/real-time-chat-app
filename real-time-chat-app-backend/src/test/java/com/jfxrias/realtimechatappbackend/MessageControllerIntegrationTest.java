@@ -87,6 +87,67 @@ class MessageControllerIntegrationTest {
     }
 
     @Test
+    void shouldCreateReportWhenAuthenticatedAndReportedUserExists() throws Exception {
+        TestUser reporter = registerAndLogin("Usuário denunciante");
+        TestUser reported = registerAndLogin("Usuário denunciado");
+        String groupUuid = createGroup(reporter, "Grupo da denúncia");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                baseUrl() + "/reports",
+                HttpMethod.POST,
+                authenticatedRequest(Map.of(
+                        "reportedUuid", reported.uuid(),
+                        "groupUuid", groupUuid,
+                        "reason", "Comportamento inadequado"
+                ), reporter.token()),
+                String.class
+        );
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        JsonNode body = objectMapper.readTree(response.getBody());
+        assertEquals(reporter.uuid(), body.get("reporterUuid").asText());
+        assertEquals(reported.uuid(), body.get("reportedUuid").asText());
+        assertEquals(groupUuid, body.get("groupUuid").asText());
+        assertEquals("Comportamento inadequado", body.get("reason").asText());
+        assertTrue(body.get("reportUuid").asText().length() > 0);
+    }
+
+    @Test
+    void shouldRejectReportWithoutToken() {
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(Map.of(
+                "reportedUuid", "uuid-qualquer",
+                "groupUuid", "uuid-grupo",
+                "reason", "Motivo"
+        ), new HttpHeaders());
+
+        assertStatus(
+                () -> restTemplate.exchange(baseUrl() + "/reports", HttpMethod.POST, request, String.class),
+                HttpStatus.UNAUTHORIZED
+        );
+    }
+
+    @Test
+    void shouldRejectReportForUnknownReportedUser() {
+        TestUser reporter = registerAndLogin("Denunciante desconhecido");
+        String groupUuid = createGroup(reporter, "Grupo denúncia inexistente");
+
+        assertError(
+                () -> restTemplate.exchange(
+                        baseUrl() + "/reports",
+                        HttpMethod.POST,
+                        authenticatedRequest(Map.of(
+                                "reportedUuid", "usuario-inexistente",
+                                "groupUuid", groupUuid,
+                                "reason", "Motivo"
+                        ), reporter.token()),
+                        String.class
+                ),
+                HttpStatus.BAD_REQUEST,
+                "Usuário reportado não encontrado"
+        );
+    }
+
+    @Test
     void shouldSendOneMessageToTwoGroupsAndAvoidDuplicateGroupUuid() throws Exception {
         TestUser sender = registerAndLogin("Remetente grupo");
         String firstGroup = createGroup(sender, "Grupo um");

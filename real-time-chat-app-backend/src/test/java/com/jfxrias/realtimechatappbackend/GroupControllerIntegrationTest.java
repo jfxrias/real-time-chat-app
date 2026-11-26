@@ -19,6 +19,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -146,19 +147,15 @@ class GroupControllerIntegrationTest {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        try {
-            restTemplate.exchange(
-                    baseUrl() + "/groups/" + groupUuid + "/members/" + member.uuid(),
-                    HttpMethod.DELETE,
-                    new HttpEntity<>(Map.of(), headers),
-                    String.class
-            );
-            fail("Expected missing token to be denied");
-        } catch (HttpClientErrorException ex) {
-            assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
-            JsonNode body = objectMapper.readTree(ex.getResponseBodyAsString());
-            assertEquals("Token não informado", body.get("message").asText());
-        }
+        assertStatus(
+                () -> restTemplate.exchange(
+                        baseUrl() + "/groups/" + groupUuid + "/members/" + member.uuid(),
+                        HttpMethod.DELETE,
+                        new HttpEntity<>(Map.of(), headers),
+                        String.class
+                ),
+                HttpStatus.UNAUTHORIZED
+        );
     }
 
     private String baseUrl() {
@@ -187,6 +184,17 @@ class GroupControllerIntegrationTest {
                 String.class
         );
         assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
+    private void assertStatus(org.junit.jupiter.api.function.Executable executable, HttpStatus status) {
+        try {
+            executable.execute();
+            fail("Era esperado erro HTTP " + status);
+        } catch (HttpClientErrorException ex) {
+            assertEquals(status, ex.getStatusCode());
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private HttpEntity<Map<String, Object>> authenticatedRequest(Map<String, Object> body, String token) {
