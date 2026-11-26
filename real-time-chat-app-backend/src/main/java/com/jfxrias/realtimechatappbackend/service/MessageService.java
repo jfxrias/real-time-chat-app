@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.time.LocalDateTime;
 
 @Service
@@ -119,14 +120,41 @@ public class MessageService {
             throw new IllegalArgumentException("Usuário não pode editar esta mensagem");
         }
 
-        if (!privateMessageRepository.existsById(normalizedMessageUuid)
-                && !groupMessageRepository.existsById(normalizedMessageUuid)) {
+        Optional<PrivateMessage> privateMessage = privateMessageRepository.findById(normalizedMessageUuid);
+        Optional<GroupMessage> groupMessage = groupMessageRepository.findById(normalizedMessageUuid);
+        if (privateMessage.isEmpty() && groupMessage.isEmpty()) {
             throw new IllegalArgumentException("Mensagem não está vinculada a conversa privada ou grupo");
         }
 
         message.setContent(normalizedContent);
         message.setEditedAt(LocalDateTime.now());
-        return messageRepository.save(message);
+        Message saved = messageRepository.save(message);
+
+        if (privateMessage.isPresent()) {
+            String receiverUuid = privateMessage.get().getReceiverUuid();
+            PrivateMessageEditedDTO editedDto = new PrivateMessageEditedDTO(
+                    saved.getMessageUuid(),
+                    saved.getSenderUuid(),
+                    receiverUuid,
+                    saved.getContent(),
+                    saved.getSentAt(),
+                    saved.getEditedAt()
+            );
+            messagingTemplate.convertAndSend("/topic/private/" + receiverUuid, editedDto);
+            messagingTemplate.convertAndSend("/topic/private/" + saved.getSenderUuid(), editedDto);
+        } else {
+            String targetGroupUuid = groupMessage.orElseThrow().getTargetGroupUuid();
+            GroupMessageEditedDTO editedDto = new GroupMessageEditedDTO(
+                    saved.getMessageUuid(),
+                    saved.getSenderUuid(),
+                    targetGroupUuid,
+                    saved.getContent(),
+                    saved.getSentAt(),
+                    saved.getEditedAt()
+            );
+            messagingTemplate.convertAndSend("/topic/groups/" + targetGroupUuid, editedDto);
+        }
+        return saved;
     }
 
     @Transactional
@@ -227,6 +255,26 @@ public class MessageService {
             String targetGroupUuid,
             String content,
             LocalDateTime sentAt
+    ) {
+    }
+
+    private record PrivateMessageEditedDTO(
+            String messageUuid,
+            String senderUuid,
+            String receiverUuid,
+            String content,
+            LocalDateTime sentAt,
+            LocalDateTime editedAt
+    ) {
+    }
+
+    private record GroupMessageEditedDTO(
+            String messageUuid,
+            String senderUuid,
+            String targetGroupUuid,
+            String content,
+            LocalDateTime sentAt,
+            LocalDateTime editedAt
     ) {
     }
 }

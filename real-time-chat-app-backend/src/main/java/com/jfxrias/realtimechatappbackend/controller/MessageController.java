@@ -136,13 +136,15 @@ public class MessageController {
         try {
             String authenticatedUserUuid = extractAuthenticatedUserUuid(authorization);
             List<Message> messages = messageService.getPrivateMessages(authenticatedUserUuid, otherUserUuid);
-            return ResponseEntity.ok(messages.stream().map(message -> Map.of(
-                    "messageUuid", message.getMessageUuid(),
-                    "senderUuid", message.getSenderUuid(),
-                    "content", message.getContent(),
-                    "sentAt", message.getSentAt(),
-                    "editedAt", message.getEditedAt()
-            )).toList());
+            return ResponseEntity.ok(messages.stream().map(message -> {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("messageUuid", message.getMessageUuid());
+                item.put("senderUuid", message.getSenderUuid());
+                item.put("content", message.getContent());
+                item.put("sentAt", message.getSentAt());
+                item.put("editedAt", message.getEditedAt());
+                return item;
+            }).toList());
         } catch (IllegalArgumentException e) {
             boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
                     || e.getMessage().equals("Token não informado");
@@ -160,13 +162,15 @@ public class MessageController {
         try {
             String authenticatedUserUuid = extractAuthenticatedUserUuid(authorization);
             List<Message> messages = messageService.getGroupMessages(authenticatedUserUuid, groupUuid);
-            return ResponseEntity.ok(messages.stream().map(message -> Map.of(
-                    "messageUuid", message.getMessageUuid(),
-                    "senderUuid", message.getSenderUuid(),
-                    "content", message.getContent(),
-                    "sentAt", message.getSentAt(),
-                    "editedAt", message.getEditedAt()
-            )).toList());
+            return ResponseEntity.ok(messages.stream().map(message -> {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("messageUuid", message.getMessageUuid());
+                item.put("senderUuid", message.getSenderUuid());
+                item.put("content", message.getContent());
+                item.put("sentAt", message.getSentAt());
+                item.put("editedAt", message.getEditedAt());
+                return item;
+            }).toList());
         } catch (IllegalArgumentException e) {
             boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
                     || e.getMessage().equals("Token não informado");
