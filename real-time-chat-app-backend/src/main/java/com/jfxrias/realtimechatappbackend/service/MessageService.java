@@ -88,7 +88,8 @@ public class MessageService {
             if (!"ACTIVE".equalsIgnoreCase(group.getStatus())) {
                 throw new IllegalArgumentException("O grupo não está ativo: " + groupUuid);
             }
-            if (!groupMemberRepository.existsById(new GroupMemberId(groupUuid, normalizedSender))) {
+            boolean isCreator = normalizedSender.equals(group.getCreatorUuid());
+            if (!isCreator && !groupMemberRepository.existsById(new GroupMemberId(groupUuid, normalizedSender))) {
                 throw new IllegalArgumentException("Usuário não participa do grupo: " + groupUuid);
             }
 
@@ -206,10 +207,11 @@ public class MessageService {
         userRepository.findById(normalizedAuthenticatedUser)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário autenticado não encontrado"));
 
-        groupRepository.findById(normalizedGroupUuid)
+        Group group = groupRepository.findById(normalizedGroupUuid)
                 .orElseThrow(() -> new IllegalArgumentException("Grupo não encontrado"));
 
-        if (!groupMemberRepository.existsById(new GroupMemberId(normalizedGroupUuid, normalizedAuthenticatedUser))) {
+        boolean isCreator = normalizedAuthenticatedUser.equals(group.getCreatorUuid());
+        if (!isCreator && !groupMemberRepository.existsById(new GroupMemberId(normalizedGroupUuid, normalizedAuthenticatedUser))) {
             throw new IllegalArgumentException("Usuário não participa do grupo");
         }
 

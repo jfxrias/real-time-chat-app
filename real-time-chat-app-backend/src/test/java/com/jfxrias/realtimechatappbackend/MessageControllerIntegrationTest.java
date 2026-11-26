@@ -173,6 +173,33 @@ class MessageControllerIntegrationTest {
     }
 
     @Test
+    void shouldAllowCreatorToSendAndReadGroupMessagesRightAfterCreation() throws Exception {
+        TestUser creator = registerAndLogin("Criador mensagem");
+        String groupUuid = createGroup(creator, "Grupo criador");
+
+        ResponseEntity<String> sendResponse = restTemplate.exchange(
+                baseUrl() + "/messages/groups",
+                HttpMethod.POST,
+                authenticatedRequest(Map.of("groupUuids", List.of(groupUuid), "content", "Olá do criador"), creator.token()),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, sendResponse.getStatusCode());
+        JsonNode sendBody = objectMapper.readTree(sendResponse.getBody());
+        assertEquals(1, sendBody.get("deliveries").size());
+
+        ResponseEntity<String> historyResponse = restTemplate.exchange(
+                baseUrl() + "/messages/groups/" + groupUuid,
+                HttpMethod.GET,
+                authenticatedRequest(Map.of(), creator.token()),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, historyResponse.getStatusCode());
+        JsonNode history = objectMapper.readTree(historyResponse.getBody());
+        assertEquals(1, history.size());
+        assertEquals("Olá do criador", history.get(0).get("content").asText());
+    }
+
+    @Test
     void shouldRejectMessageWhenUserDoesNotParticipateInGroup() {
         TestUser creator = registerAndLogin("Criador grupo");
         TestUser outsider = registerAndLogin("Usuário externo");
@@ -441,21 +468,7 @@ class MessageControllerIntegrationTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         try {
             JsonNode body = objectMapper.readTree(response.getBody());
-            String groupUuid = body.get("groupUuid").asText();
-
-            // Quando criado pelo usuário, o projeto ainda não adiciona o criador automaticamente.
-            // Adiciona-o explicitamente ao grupo para validar o fluxo completo de participação.
-            HttpEntity<Map<String, Object>> memberRequest = authenticatedRequest(
-                    Map.of("userUuid", creator.uuid(), "role", "MEMBER"),
-                    creator.token()
-            );
-            restTemplate.exchange(
-                    baseUrl() + "/groups/" + groupUuid + "/members",
-                    HttpMethod.POST,
-                    memberRequest,
-                    String.class
-            );
-            return groupUuid;
+            return body.get("groupUuid").asText();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

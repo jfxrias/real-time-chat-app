@@ -49,7 +49,6 @@ class WebSocketMessagingIntegrationTest {
         TestUser receiver = registerAndLogin("Receiver");
         String groupUuid = createGroup(sender, "Realtime Group");
         addMemberToGroup(groupUuid, sender, receiver.uuid());
-        addMemberToGroup(groupUuid, sender, sender.uuid());
 
         StompSession session = connectStomp(sender.token());
         BlockingQueue<Map<String, Object>> privateEvents = new LinkedBlockingQueue<>();

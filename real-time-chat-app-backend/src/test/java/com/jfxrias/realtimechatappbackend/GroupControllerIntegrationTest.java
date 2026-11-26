@@ -189,7 +189,6 @@ class GroupControllerIntegrationTest {
         TestUser creator = registerAndLogin("Criador listagem");
         TestUser member = registerAndLogin("Membro listagem");
         String groupUuid = createGroup(creator.uuid());
-        addMemberToGroup(groupUuid, creator.token(), creator.uuid(), "MEMBER");
         addMemberToGroup(groupUuid, creator.token(), member.uuid(), "MEMBER");
 
         ResponseEntity<String> groupsResponse = restTemplate.exchange(
@@ -212,6 +211,25 @@ class GroupControllerIntegrationTest {
         JsonNode membersBody = objectMapper.readTree(membersResponse.getBody());
         assertTrue(membersBody.isArray());
         assertTrue(membersBody.size() >= 2);
+    }
+
+    @Test
+    void shouldAddCreatorAsAdminMemberWhenCreatingGroup() throws Exception {
+        TestUser creator = registerAndLogin("Criador membro automático");
+        String groupUuid = createGroup(creator.uuid());
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                baseUrl() + "/groups/" + groupUuid + "/members",
+                HttpMethod.GET,
+                authenticatedRequest(Map.of(), creator.token()),
+                String.class
+        );
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        JsonNode body = objectMapper.readTree(response.getBody());
+        assertEquals(1, body.size());
+        assertEquals(creator.uuid(), body.get(0).get("userUuid").asText());
+        assertEquals("ADMIN", body.get(0).get("role").asText());
     }
 
     private String baseUrl() {

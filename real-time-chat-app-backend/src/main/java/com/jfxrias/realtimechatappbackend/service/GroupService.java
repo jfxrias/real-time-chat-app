@@ -10,6 +10,7 @@ import com.jfxrias.realtimechatappbackend.repository.UserRepository;
 import com.jfxrias.realtimechatappbackend.entity.GroupMember;
 import com.jfxrias.realtimechatappbackend.entity.GroupMemberId;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -29,6 +30,7 @@ public class GroupService {
         this.groupMemberRepository = groupMemberRepository;
     }
 
+    @Transactional
     public Group createGroup(String groupName, String creatorUuid) {
         String normalizedName = groupName == null ? null : groupName.trim();
         String normalizedCreatorUuid = creatorUuid == null ? null : creatorUuid.trim();
@@ -49,7 +51,9 @@ public class GroupService {
         group.setCreatorUuid(creator.getUserUuid());
         group.setStatus("ACTIVE");
 
-        return groupRepository.save(group);
+        Group saved = groupRepository.save(group);
+        groupMemberRepository.save(new GroupMember(saved.getGroupUuid(), creator.getUserUuid(), "ADMIN"));
+        return saved;
     }
 
     public void deleteGroup(String groupUuid, String userUuid) {
