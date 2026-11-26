@@ -3,6 +3,7 @@ package com.jfxrias.realtimechatappbackend.controller;
 import com.jfxrias.realtimechatappbackend.dto.AddGroupMemberRequestDTO;
 import com.jfxrias.realtimechatappbackend.dto.CreateGroupRequestDTO;
 import com.jfxrias.realtimechatappbackend.dto.GroupResponseDTO;
+import com.jfxrias.realtimechatappbackend.dto.UpdateGroupRequestDTO;
 import com.jfxrias.realtimechatappbackend.entity.Group;
 import com.jfxrias.realtimechatappbackend.service.GroupService;
 import com.jfxrias.realtimechatappbackend.util.JwtUtil;
@@ -121,6 +122,56 @@ public class GroupController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
+
+        @PatchMapping("/{groupUuid}")
+        public ResponseEntity<?> updateGroup(
+                @PathVariable String groupUuid,
+                @Valid @RequestBody UpdateGroupRequestDTO request,
+                @RequestHeader(value = "Authorization", required = false) String authorization
+        ) {
+            try {
+                String authenticatedUserUuid = extractAuthenticatedUserUuid(authorization);
+                Group group = groupService.updateGroupName(groupUuid, authenticatedUserUuid, request.groupName());
+                return ResponseEntity.ok(toResponse(group));
+            } catch (IllegalArgumentException e) {
+                boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                        || e.getMessage().equals("Token não informado");
+                return tokenError
+                        ? ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", e.getMessage()))
+                        : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            }
+        }
+
+        @GetMapping("")
+        public ResponseEntity<?> listGroups(@RequestHeader(value = "Authorization", required = false) String authorization) {
+            try {
+                String authenticatedUserUuid = extractAuthenticatedUserUuid(authorization);
+                return ResponseEntity.ok(groupService.listUserGroups(authenticatedUserUuid));
+            } catch (IllegalArgumentException e) {
+                boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                        || e.getMessage().equals("Token não informado");
+                return tokenError
+                        ? ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", e.getMessage()))
+                        : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            }
+        }
+
+        @GetMapping("/{groupUuid}/members")
+        public ResponseEntity<?> listGroupMembers(
+                @PathVariable String groupUuid,
+                @RequestHeader(value = "Authorization", required = false) String authorization
+        ) {
+            try {
+                String authenticatedUserUuid = extractAuthenticatedUserUuid(authorization);
+                return ResponseEntity.ok(groupService.listGroupMembers(groupUuid, authenticatedUserUuid));
+            } catch (IllegalArgumentException e) {
+                boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                        || e.getMessage().equals("Token não informado");
+                return tokenError
+                        ? ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", e.getMessage()))
+                        : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            }
+        }
     }
 
     private String resolveCreatorUuid(
@@ -163,5 +214,16 @@ public class GroupController {
                 group.getStatus(),
                 group.getCreatedAt()
         );
+    }
+
+    private String extractAuthenticatedUserUuid(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("Token não informado");
+        }
+        String token = authorization.substring(7).trim();
+        if (token.isBlank()) {
+            throw new IllegalArgumentException("Token não informado");
+        }
+        return jwtUtil.extractUserUuid(token);
     }
 }

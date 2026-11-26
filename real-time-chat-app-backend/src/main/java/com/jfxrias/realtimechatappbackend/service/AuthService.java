@@ -1,6 +1,8 @@
 package com.jfxrias.realtimechatappbackend.service;
 
 import com.jfxrias.realtimechatappbackend.dto.RegisterRequestDTO;
+import com.jfxrias.realtimechatappbackend.dto.UserResponseDTO;
+import com.jfxrias.realtimechatappbackend.dto.FriendshipResponseDTO;
 import com.jfxrias.realtimechatappbackend.entity.Friendship;
 import com.jfxrias.realtimechatappbackend.entity.FriendshipId;
 import com.jfxrias.realtimechatappbackend.entity.User;
@@ -9,6 +11,8 @@ import com.jfxrias.realtimechatappbackend.repository.UserRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -118,6 +122,82 @@ public class AuthService {
         }
 
         return friendshipRepository.save(new Friendship(firstUserUuid, secondUserUuid));
+    }
+
+    public UserResponseDTO getAuthenticatedUser(String authenticatedUserUuid) {
+        String normalizedAuthenticatedUuid = normalizeRequired(authenticatedUserUuid, "Usuário autenticado é obrigatório");
+        User user = userRepository.findById(normalizedAuthenticatedUuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        return toUserResponse(user);
+    }
+
+    public List<UserResponseDTO> listActiveUsers() {
+        return userRepository.findByIsActiveTrue()
+                .stream()
+                .map(this::toUserResponse)
+                .toList();
+    }
+
+    public List<FriendshipResponseDTO> listFriendships(String authenticatedUserUuid) {
+        String normalizedAuthenticatedUuid = normalizeRequired(authenticatedUserUuid, "Usuário autenticado é obrigatório");
+        userRepository.findById(normalizedAuthenticatedUuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário autenticado não encontrado"));
+
+        List<Friendship> friendships = friendshipRepository.findByIdFirstUserUuidOrIdSecondUserUuid(
+                normalizedAuthenticatedUuid,
+                normalizedAuthenticatedUuid
+        );
+
+        List<FriendshipResponseDTO> response = new ArrayList<>();
+        for (Friendship friendship : friendships) {
+            String firstUserUuid = friendship.getId().getFirstUserUuid();
+            String secondUserUuid = friendship.getId().getSecondUserUuid();
+            String friendUserUuid = firstUserUuid.equals(normalizedAuthenticatedUuid) ? secondUserUuid : firstUserUuid;
+
+            User friend = userRepository.findById(friendUserUuid)
+                    .orElseThrow(() -> new IllegalArgumentException("Usuário amigo não encontrado"));
+
+            response.add(new FriendshipResponseDTO(
+                    friend.getUserUuid(),
+                    friend.getName(),
+                    friend.getCpf(),
+                    friend.getIsAdmin(),
+                    friend.getIsActive(),
+                    friendship.getCreatedAt()
+            ));
+        }
+
+        return response;
+    }
+
+    public void deleteFriendship(String authenticatedUserUuid, String targetUserUuid) {
+        String normalizedAuthenticatedUuid = normalizeRequired(authenticatedUserUuid, "Usuário autenticado é obrigatório");
+        String normalizedTargetUuid = normalizeRequired(targetUserUuid, "UUID do usuário é obrigatório");
+
+        if (normalizedAuthenticatedUuid.equals(normalizedTargetUuid)) {
+            throw new IllegalArgumentException("Não é possível remover amizade com o próprio usuário");
+        }
+
+        String firstUserUuid = normalizedAuthenticatedUuid.compareTo(normalizedTargetUuid) < 0
+                ? normalizedAuthenticatedUuid : normalizedTargetUuid;
+        String secondUserUuid = normalizedAuthenticatedUuid.compareTo(normalizedTargetUuid) < 0
+                ? normalizedTargetUuid : normalizedAuthenticatedUuid;
+
+        FriendshipId friendshipId = new FriendshipId(firstUserUuid, secondUserUuid);
+        Friendship friendship = friendshipRepository.findById(friendshipId)
+                .orElseThrow(() -> new IllegalArgumentException("Amizade não encontrada"));
+
+        friendshipRepository.delete(friendship);
+    }
+
+    private UserResponseDTO toUserResponse(User user) {
+        return new UserResponseDTO(
+                user.getUserUuid(),
+                user.getName(),
+                user.getCpf(),
+                user.getIsAdmin(),
+                user.getIsActive()
+        );
     }
 
     private String normalizeRequired(String value, String message) {

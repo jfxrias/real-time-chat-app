@@ -1,6 +1,7 @@
 package com.jfxrias.realtimechatappbackend.controller;
 
 import com.jfxrias.realtimechatappbackend.dto.AuthResponseDTO;
+import com.jfxrias.realtimechatappbackend.dto.FriendshipResponseDTO;
 import com.jfxrias.realtimechatappbackend.dto.LoginRequestDTO;
 import com.jfxrias.realtimechatappbackend.dto.RegisterRequestDTO;
 import com.jfxrias.realtimechatappbackend.dto.CreateFriendshipRequestDTO;
@@ -15,6 +16,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -107,6 +109,67 @@ public class AuthController {
             return tokenError
                     ? ResponseEntity.status(401).body(Map.of("message", e.getMessage()))
                     : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+
+        @GetMapping("/me")
+        public ResponseEntity<?> me(@RequestHeader(value = "Authorization", required = false) String authorization) {
+            try {
+                String authenticatedUserUuid = extractAuthenticatedUserUuid(authorization);
+                return ResponseEntity.ok(authService.getAuthenticatedUser(authenticatedUserUuid));
+            } catch (IllegalArgumentException e) {
+                boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                        || e.getMessage().equals("Token não informado");
+                return tokenError
+                        ? ResponseEntity.status(401).body(Map.of("message", e.getMessage()))
+                        : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            }
+        }
+
+        @GetMapping("/users")
+        public ResponseEntity<?> users(@RequestHeader(value = "Authorization", required = false) String authorization) {
+            try {
+                extractAuthenticatedUserUuid(authorization);
+                return ResponseEntity.ok(authService.listActiveUsers());
+            } catch (IllegalArgumentException e) {
+                boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                        || e.getMessage().equals("Token não informado");
+                return tokenError
+                        ? ResponseEntity.status(401).body(Map.of("message", e.getMessage()))
+                        : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            }
+        }
+
+        @GetMapping("/friendships")
+        public ResponseEntity<?> friendships(@RequestHeader(value = "Authorization", required = false) String authorization) {
+            try {
+                String authenticatedUserUuid = extractAuthenticatedUserUuid(authorization);
+                List<FriendshipResponseDTO> friendships = authService.listFriendships(authenticatedUserUuid);
+                return ResponseEntity.ok(friendships);
+            } catch (IllegalArgumentException e) {
+                boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                        || e.getMessage().equals("Token não informado");
+                return tokenError
+                        ? ResponseEntity.status(401).body(Map.of("message", e.getMessage()))
+                        : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            }
+        }
+
+        @DeleteMapping("/friendships/{userUuid}")
+        public ResponseEntity<?> deleteFriendship(
+                @PathVariable String userUuid,
+                @RequestHeader(value = "Authorization", required = false) String authorization
+        ) {
+            try {
+                String authenticatedUserUuid = extractAuthenticatedUserUuid(authorization);
+                authService.deleteFriendship(authenticatedUserUuid, userUuid);
+                return ResponseEntity.ok(Map.of("message", "Amizade removida com sucesso"));
+            } catch (IllegalArgumentException e) {
+                boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                        || e.getMessage().equals("Token não informado");
+                return tokenError
+                        ? ResponseEntity.status(401).body(Map.of("message", e.getMessage()))
+                        : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            }
         }
     }
 
