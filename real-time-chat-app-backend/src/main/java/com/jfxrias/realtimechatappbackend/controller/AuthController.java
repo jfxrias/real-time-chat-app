@@ -3,6 +3,8 @@ package com.jfxrias.realtimechatappbackend.controller;
 import com.jfxrias.realtimechatappbackend.dto.AuthResponseDTO;
 import com.jfxrias.realtimechatappbackend.dto.LoginRequestDTO;
 import com.jfxrias.realtimechatappbackend.dto.RegisterRequestDTO;
+import com.jfxrias.realtimechatappbackend.dto.UpdateNameRequestDTO;
+import com.jfxrias.realtimechatappbackend.dto.UpdatePasswordRequestDTO;
 import com.jfxrias.realtimechatappbackend.dto.UserResponseDTO;
 import com.jfxrias.realtimechatappbackend.entity.User;
 import com.jfxrias.realtimechatappbackend.service.AuthService;
@@ -45,6 +47,53 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
+    }
+
+    @PatchMapping("/name")
+    public ResponseEntity<?> updateName(
+            @Valid @RequestBody UpdateNameRequestDTO request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        try {
+            String authenticatedUserUuid = extractAuthenticatedUserUuid(authorization);
+            User user = authService.updateName(authenticatedUserUuid, request.name());
+            return ResponseEntity.ok(toResponse(user));
+        } catch (IllegalArgumentException e) {
+            boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                    || e.getMessage().equals("Token não informado");
+            return tokenError
+                    ? ResponseEntity.status(401).body(Map.of("message", e.getMessage()))
+                    : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PatchMapping("/password")
+    public ResponseEntity<?> updatePassword(
+            @Valid @RequestBody UpdatePasswordRequestDTO request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        try {
+            String authenticatedUserUuid = extractAuthenticatedUserUuid(authorization);
+            authService.updatePassword(authenticatedUserUuid, request.password());
+            return ResponseEntity.ok(Map.of("message", "Senha atualizada com sucesso"));
+        } catch (IllegalArgumentException e) {
+            boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                    || e.getMessage().equals("Token não informado");
+            return tokenError
+                    ? ResponseEntity.status(401).body(Map.of("message", e.getMessage()))
+                    : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    private String extractAuthenticatedUserUuid(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("Token não informado");
+        }
+        String token = authorization.substring(7).trim();
+        if (token.isBlank()) {
+            throw new IllegalArgumentException("Token não informado");
+        }
+        return jwtUtil.extractUserUuid(token);
     }
 
     private UserResponseDTO toResponse(User user) {

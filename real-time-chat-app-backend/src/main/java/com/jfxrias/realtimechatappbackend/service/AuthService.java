@@ -65,4 +65,27 @@ public class AuthService {
 
         return user;
     }
+
+    public User updateName(String userUuid, String name) {
+        String normalizedName = name == null ? null : name.trim();
+        if (normalizedName == null || normalizedName.isBlank()) {
+            throw new IllegalArgumentException("Nome é obrigatório");
+        }
+
+        User user = userRepository.findById(userUuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        user.setName(normalizedName);
+        return userRepository.save(user);
+    }
+
+    public void updatePassword(String userUuid, String password) {
+        if (password == null || password.length() < 6) {
+            throw new IllegalArgumentException("Senha deve ter pelo menos 6 caracteres");
+        }
+
+        User user = userRepository.findById(userUuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+        user.setPasswordHash(passwordEncoder.encode(password));
+        userRepository.save(user);
+    }
 }
