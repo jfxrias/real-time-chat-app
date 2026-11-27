@@ -11,3 +11,22 @@
 .uz-mono { font-family: ui-monospace, monospace; font-size: .78rem; color: var(--sofismar-text-secondary); }
 .uz-analytics-empty { padding: 4rem 1rem; text-align: center; color: var(--sofismar-text-secondary); }
 .uz-analytics-empty .ico { width: 72px; height: 72px; border-radius: 20px; background: var(--sofismar-surface-1); display: inline-flex; align-items: center; justify-content: center; color: var(--sofismar-accent); margin-bottom: 1rem; }
+.uz-analytics { color: var(--sofismar-text-primary); }
+.uz-analytics-card { height: 100%; padding: 1rem; }
+.uz-analytics-title { margin: 0 0 .85rem; color: var(--sofismar-text-secondary); font-size: .82rem; font-weight: 700; }
+.uz-analytics-highlight { color: var(--sofismar-text-primary); font-size: 1.15rem; font-weight: 700; }
+.uz-analytics-note { margin-top: .5rem; color: var(--sofismar-accent); font-size: .78rem; }
+.uz-analytics-feedback { color: var(--sofismar-text-secondary); font-size: .8rem; }
+.uz-analytics-list { max-height: 260px; overflow-y: auto; }
+.uz-analytics-list-item { padding: .55rem 0; color: var(--sofismar-text-primary); font-size: .85rem; }
+.uz-analytics-list-item + .uz-analytics-list-item,
+.uz-analytics-row + .uz-analytics-row { border-top: 1px solid var(--sofismar-border); }
+.uz-analytics-track { height: 4px; margin-top: .4rem; overflow: hidden; background: var(--sofismar-surface-1); border-radius: 4px; }
+.uz-analytics-track span { display: block; height: 100%; background: var(--sofismar-accent); border-radius: inherit; }
+.uz-analytics-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; min-height: 42px; padding: .45rem .35rem; color: var(--sofismar-text-primary); font-size: .85rem; }
+.uz-analytics-row:hover { background: #2F2C31; }
+.uz-analytics-count { white-space: nowrap; color: var(--sofismar-text-primary); }
+.uz-analytics-danger { color: var(--sofismar-text-primary); background: var(--sofismar-danger); }
+.uz-analytics-stat { display: flex; flex-direction: column; gap: .25rem; padding: .65rem; background: var(--sofismar-surface-1); border-radius: 8px; }
+.uz-analytics-stat span { color: var(--sofismar-text-secondary); font-size: .72rem; }
+.uz-analytics-stat strong { color: var(--sofismar-text-primary); font-size: 1.1rem; }

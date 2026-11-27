@@ -1,5 +1,5 @@
 import { toast } from "@/lib/toast";
-import type { ChatMessage, Friendship, FriendshipCreated, Group, GroupMember, Report, User } from "./types";
+import type { ChatMessage, CommonReportReason, Friendship, FriendshipCreated, Group, GroupMember, GroupMemberCount, ReceivedPercentage, Report, User, UserMessageStats, UserMostFriends, UserMostGroups, UserMostInactive, UserTopReported } from "./types";
 
 export const API_BASE_URL: string = import.meta.env["VITE_API_BASE_URL"] || "http://localhost:8080";
 export const WS_URL: string = import.meta.env["VITE_WS_URL"] || "ws://localhost:8080/ws";
@@ -72,4 +72,12 @@ export const api = {
   setUserActive: (id: string, active: boolean) => request<Msg & { userUuid: string; isActive: boolean }>("PATCH", `/admin/users/${id}/${active ? "reactivate" : "deactivate"}`),
   adminGroups: () => request<Group[]>("GET", "/admin/groups"),
   setGroupActive: (id: string, active: boolean) => request<Msg & { groupUuid: string; status: string }>("PATCH", `/admin/groups/${id}/${active ? "reactivate" : "deactivate"}`),
+  analyticsReceivedPercentage: () => request<ReceivedPercentage[]>("GET", "/analytics/messages/received-percentage"),
+  analyticsMostFriends: () => request<UserMostFriends[]>("GET", "/analytics/users/most-friends"),
+  analyticsGroupMemberCount: () => request<GroupMemberCount[]>("GET", "/analytics/groups/member-count"),
+  analyticsTopReported: () => request<UserTopReported[]>("GET", "/analytics/reports/top-reported"),
+  analyticsCommonReasons: () => request<CommonReportReason[]>("GET", "/analytics/reports/common-reasons"),
+  analyticsMostGroups: () => request<UserMostGroups[]>("GET", "/analytics/users/most-groups"),
+  analyticsMostInactive: () => request<UserMostInactive>("GET", "/analytics/users/most-inactive"),
+  analyticsMessageStats: (userUuid: string, start: string, end: string) => request<UserMessageStats>("GET", `/analytics/users/${encodeURIComponent(userUuid)}/message-stats?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`),
 };

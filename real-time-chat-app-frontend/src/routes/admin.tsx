@@ -6,6 +6,7 @@ import { toast } from "@/lib/toast";
 import { api } from "@/services/api";
 import type { Group, Report, User } from "@/services/types";
 import { groupStatusLabel } from "@/lib/labels";
+import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 import sofismarIcon from "../img/favLogoSemFundo.png";
 
 export const Route = createFileRoute("/admin")({
@@ -31,6 +32,11 @@ function AdminPage() {
     } catch { /* toast */ } finally { setLoading(false); }
   }, []);
   useEffect(() => { if (user?.isAdmin && tab !== "analytics") void load(tab); }, [tab, user?.isAdmin, load]);
+  useEffect(() => {
+    if (tab === "analytics" && user?.isAdmin && users.length === 0) {
+      api.adminUsers().then(setUsers).catch(() => toast("Não foi possível carregar os usuários.", "error"));
+    }
+  }, [tab, user?.isAdmin, users.length]);
   const nameOf = (id: string) => users.find((u) => u.userUuid === id)?.name;
   useEffect(() => { if (tab === "reports" && user?.isAdmin && users.length === 0) api.adminUsers().then(setUsers).catch(() => {}); if (tab === "reports" && user?.isAdmin && groups.length === 0) api.adminGroups().then(setGroups).catch(() => {}); }, [tab]);
   const groupName = (id: string) => groups.find((g) => g.groupUuid === id)?.groupName;
@@ -57,7 +63,7 @@ function AdminPage() {
         {tab === "reports" && <div className="uz-card"><div className="table-responsive"><table className="table table-hover"><thead><tr><th>Data</th><th>Motivo</th><th>Denunciante</th><th>Denunciado</th><th>Grupo</th></tr></thead><tbody>
           {reports.map((r) => <tr key={r.reportUuid}><td className="text-nowrap">{fmtDate(r.reportedAt)}</td><td style={{ maxWidth: 360 }}>{r.reason}</td><td>{nameOf(r.reporterUuid) ?? <span className="uz-mono">{r.reporterUuid}</span>}</td><td>{nameOf(r.reportedUuid) ?? <span className="uz-mono">{r.reportedUuid}</span>}</td><td>{groupName(r.groupUuid) ?? <span className="uz-mono">{r.groupUuid}</span>}</td></tr>)}
           {!loading && reports.length === 0 && <tr><td colSpan={5} className="uz-empty">Nenhuma denúncia registrada.</td></tr>}</tbody></table></div></div>}
-        {tab === "analytics" && <div className="uz-card uz-analytics-empty"><div className="ico"><BarChart3 size={34} /></div><h5 className="text-light">Em breve</h5><p className="mb-0">Integração dos endpoints analíticos.</p></div>}
+        {tab === "analytics" && <AnalyticsDashboard users={users} />}
       </div>
     </div>
   );
