@@ -49,6 +49,18 @@ class AdminControllerIntegrationTest {
         assertEquals("Conta desativada com sucesso", deactivateBody.get("message").asText());
         assertFalse(deactivateBody.get("isActive").asBoolean());
 
+        try {
+            restTemplate.postForEntity(
+                    baseUrl() + "/auth/login",
+                    Map.of("cpf", target.cpf(), "password", "123456"),
+                    String.class
+            );
+            fail("Era esperado erro de usuário desativado");
+        } catch (org.springframework.web.client.HttpClientErrorException ex) {
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+            assertTrue(ex.getResponseBodyAsString().contains("Usuário desativado"));
+        }
+
         ResponseEntity<String> reactivateResponse = restTemplate.exchange(
                 baseUrl() + "/admin/users/" + target.uuid() + "/reactivate",
                 HttpMethod.PATCH,
@@ -60,6 +72,13 @@ class AdminControllerIntegrationTest {
         JsonNode reactivateBody = objectMapper.readTree(reactivateResponse.getBody());
         assertEquals("Conta reativada com sucesso", reactivateBody.get("message").asText());
         assertTrue(reactivateBody.get("isActive").asBoolean());
+
+        ResponseEntity<String> reloginResponse = restTemplate.postForEntity(
+                baseUrl() + "/auth/login",
+                Map.of("cpf", target.cpf(), "password", "123456"),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, reloginResponse.getStatusCode());
     }
 
     @Test
@@ -236,7 +255,7 @@ class AdminControllerIntegrationTest {
             assertEquals(HttpStatus.OK, loginResponse.getStatusCode());
 
             JsonNode loginBody = objectMapper.readTree(loginResponse.getBody());
-            return new TestUser(uuid, loginBody.get("token").asText());
+            return new TestUser(uuid, loginBody.get("token").asText(), cpf);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -273,6 +292,6 @@ class AdminControllerIntegrationTest {
         return " - " + System.nanoTime();
     }
 
-    private record TestUser(String uuid, String token) {
+    private record TestUser(String uuid, String token, String cpf) {
     }
 }

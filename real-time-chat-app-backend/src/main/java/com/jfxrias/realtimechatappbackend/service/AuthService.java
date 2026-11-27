@@ -72,6 +72,10 @@ public class AuthService {
             throw new IllegalArgumentException("Senha inválida");
         }
 
+        if (!Boolean.TRUE.equals(user.getIsActive())) {
+            throw new IllegalArgumentException("Usuário desativado");
+        }
+
         return user;
     }
 
