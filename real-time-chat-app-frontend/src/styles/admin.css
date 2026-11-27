@@ -1,12 +1,12 @@
-.uz-admin { min-height: 100vh; background: var(--uz-bg); }
-.uz-admin-top { background: var(--uz-panel-2); border-bottom: 1px solid var(--uz-border); padding: .8rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+.uz-admin { min-height: 100vh; background: var(--sofismar-bg); }
+.uz-admin-top { background: var(--sofismar-surface-1); border-bottom: 1px solid var(--sofismar-border); padding: .8rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
 .uz-admin-body { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
 .uz-admin .uz-tabs { padding: 0; margin-bottom: 1.25rem; justify-content: flex-start; gap: .5rem; }
 .uz-admin .uz-tab { flex: 0 0 auto; padding: .75rem 1rem; display: inline-flex; gap: .4rem; align-items: center; }
-.uz-card { background: var(--uz-panel); border: 1px solid var(--uz-border); border-radius: 14px; overflow: hidden; }
-.uz-card .table { margin: 0; --bs-table-bg: transparent; --bs-table-color: var(--uz-text); --bs-table-hover-bg: var(--uz-panel-2); --bs-table-hover-color: var(--uz-text); }
-.uz-card .table th { color: var(--uz-muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; background: var(--uz-panel-2); border-color: var(--uz-border); }
-.uz-card .table td { border-color: var(--uz-border); vertical-align: middle; font-size: .9rem; }
-.uz-mono { font-family: ui-monospace, monospace; font-size: .78rem; color: var(--uz-muted); }
-.uz-analytics-empty { padding: 4rem 1rem; text-align: center; color: var(--uz-muted); }
-.uz-analytics-empty .ico { width: 72px; height: 72px; border-radius: 20px; background: var(--uz-panel-2); display: inline-flex; align-items: center; justify-content: center; color: var(--uz-accent); margin-bottom: 1rem; }
+.uz-card { background: var(--sofismar-surface-2); border: 1px solid var(--sofismar-border); border-radius: 14px; overflow: hidden; }
+.uz-card .table { margin: 0; --bs-table-bg: var(--sofismar-surface-2); --bs-table-color: var(--sofismar-text-primary); --bs-table-hover-bg: var(--sofismar-surface-3); --bs-table-hover-color: var(--sofismar-text-primary); }
+.uz-card .table th { color: var(--sofismar-text-secondary); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; background: var(--sofismar-surface-1); border-color: var(--sofismar-border); }
+.uz-card .table td { border-color: var(--sofismar-border); vertical-align: middle; font-size: .9rem; }
+.uz-mono { font-family: ui-monospace, monospace; font-size: .78rem; color: var(--sofismar-text-secondary); }
+.uz-analytics-empty { padding: 4rem 1rem; text-align: center; color: var(--sofismar-text-secondary); }
+.uz-analytics-empty .ico { width: 72px; height: 72px; border-radius: 20px; background: var(--sofismar-surface-1); display: inline-flex; align-items: center; justify-content: center; color: var(--sofismar-accent); margin-bottom: 1rem; }

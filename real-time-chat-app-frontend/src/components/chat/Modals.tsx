@@ -92,7 +92,7 @@ export function GroupDetailsModal({ group, users, onClose, onChanged, onDeleted 
           <button className="btn btn-primary" disabled={!addUuid} onClick={add}><UserPlus size={16} /></button></div></>}
         <div className="uz-section-title">Membros ({members.length})</div>
         <div className="list-group">{members.map((m) => (
-          <div key={m.userUuid} className="list-group-item d-flex align-items-center gap-2" style={{ background: "var(--uz-panel-2)" }}>
+          <div key={m.userUuid} className="list-group-item d-flex align-items-center gap-2">
             <span className="uz-avatar sm">{initials(nameOf(m))}</span>
             <span className="flex-grow-1">{nameOf(m)}{m.userUuid === user?.userUuid && <span className="text-secondary"> (você)</span>}</span>
             {m.userUuid === group.creatorUuid ? <span className="badge text-bg-warning d-flex gap-1 align-items-center"><Crown size={12} />Criador</span> : m.role === "ADMIN" ? <span className="badge text-bg-info d-flex gap-1 align-items-center"><Shield size={12} />ADMIN</span> : <span className="badge text-bg-secondary">MEMBER</span>}

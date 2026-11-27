@@ -1,12 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { MessageCircle } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { maskCpf, onlyDigits, useAuth } from "@/lib/auth";
 import { toast } from "@/lib/toast";
 import { api } from "@/services/api";
+import sofismarIcon from "../img/favLogoSemFundo.png";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Entrar — UaiZap" }, { name: "description", content: "Entre no UaiZap com seu CPF e senha." }, { property: "og:title", content: "Entrar — UaiZap" }, { property: "og:description", content: "Entre no UaiZap com seu CPF e senha." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  head: () => ({ meta: [{ title: "Entrar — sofismar.app" }, { name: "description", content: "Entre no sofismar.app com seu CPF e senha." }, { property: "og:title", content: "Entrar — sofismar.app" }, { property: "og:description", content: "Entre no sofismar.app com seu CPF e senha." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: LoginPage,
 });
 
@@ -25,7 +25,7 @@ function LoginPage() {
   return (
     <div className="uz-auth">
       <form className="uz-auth-card" onSubmit={submit}>
-        <div className="uz-auth-brand"><span className="mark"><MessageCircle size={24} /></span><span className="uz-logo">Uai<span>Zap</span></span></div>
+        <div className="uz-auth-brand"><img className="sofismar-logo-icon" src={sofismarIcon} alt="" /><span className="sofismar-brand fs-3">sofismar.app</span></div>
         <p className="text-secondary mb-4">Entre para continuar suas conversas.</p>
         <div className="mb-3"><label className="form-label" htmlFor="cpf">CPF</label>
           <input id="cpf" className="form-control" inputMode="numeric" placeholder="000.000.000-00" value={maskCpf(cpf)} onChange={(e) => setCpf(onlyDigits(e.target.value))} required /></div>

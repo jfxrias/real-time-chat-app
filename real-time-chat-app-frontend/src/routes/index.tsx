@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { MessageCircle, Megaphone, Plus, Settings, ShieldCheck, UserMinus, UserPlus, UserRound } from "lucide-react";
+import { Megaphone, Plus, Settings, ShieldCheck, UserMinus, UserPlus, UserRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatArea } from "@/components/chat/ChatArea";
 import { BroadcastModal, GroupDetailsModal, NewGroupModal, ProfileModal } from "@/components/chat/Modals";
@@ -9,9 +9,10 @@ import { api } from "@/services/api";
 import type { ChatMessage, Conversation, Friendship, Group, User } from "@/services/types";
 import { friendUuidOf, upsertMessage } from "@/lib/chat-utils";
 import { useChatSocket, type WsStatus } from "@/services/websocket";
+import sofismarIcon from "../img/favLogoSemFundo.png";
 
 export const Route = createFileRoute("/")({
-  head: () => ({ meta: [{ title: "UaiZap — Chat em tempo real" }, { name: "description", content: "Converse em tempo real com amigos e grupos no UaiZap." }, { property: "og:title", content: "UaiZap — Chat em tempo real" }, { property: "og:description", content: "Converse em tempo real com amigos e grupos no UaiZap." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }),
+  head: () => ({ meta: [{ title: "sofismar.app — Chat em tempo real" }, { name: "description", content: "Converse em tempo real com amigos e grupos no sofismar.app." }, { property: "og:title", content: "sofismar.app — Chat em tempo real" }, { property: "og:description", content: "Converse em tempo real com amigos e grupos no sofismar.app." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }),
   component: Workspace,
 });
 
@@ -83,6 +84,10 @@ function Workspace() {
   return (
     <div className={`uz-app ${conv ? "has-chat" : ""}`}>
       <aside className="uz-sidebar">
+        <div className="sofismar-sidebar-brand">
+          <img className="sofismar-logo-icon" src={sofismarIcon} alt="sofismar.app" />
+          <span className="sofismar-brand">sofismar.app</span>
+        </div>
         <div className="uz-side-header">
           <span className="uz-avatar">{initials(user.name)}</span>
           <div className="who"><strong>{user.name}</strong><span className={`uz-ws ${ws}`}><i />{WS_LABEL[ws]}</span></div>
@@ -124,7 +129,7 @@ function Workspace() {
         onEdited={(id, content, editedAt) => setMessages((l) => l.map((m) => (m.messageUuid === id ? { ...m, content, editedAt } : m)))}
         onRemoved={(id) => setMessages((l) => l.filter((m) => m.messageUuid !== id))}
         onBack={() => setConv(null)} onDetails={() => setModal("details")} />
-        : <div className="uz-main"><div className="uz-welcome"><MessageCircle size={64} className="mb-3" /><h2>Uai<strong>Zap</strong></h2><p>Escolha uma conversa ou grupo para começar.</p></div></div>}
+        : <div className="uz-main"><div className="uz-welcome"><img className="sofismar-welcome-logo mb-3" src={sofismarIcon} alt="sofismar.app" /><h2 className="sofismar-brand">sofismar.app</h2><p>Escolha uma conversa ou grupo para começar.</p></div></div>}
 
       {modal === "profile" && <ProfileModal onClose={() => setModal(null)} onLogout={doLogout} />}
       {modal === "group" && <NewGroupModal onClose={() => setModal(null)} onCreated={(g) => { setGroups((l) => [...l, g]); setModal(null); setTab("groups"); setConv({ type: "group", id: g.groupUuid, name: g.groupName }); }} />}

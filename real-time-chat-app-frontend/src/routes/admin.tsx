@@ -5,9 +5,10 @@ import { fmtDate, useAuth } from "@/lib/auth";
 import { toast } from "@/lib/toast";
 import { api } from "@/services/api";
 import type { Group, Report, User } from "@/services/types";
+import sofismarIcon from "../img/favLogoSemFundo.png";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "Painel Admin — UaiZap" }, { name: "description", content: "Administração de usuários, grupos e denúncias do UaiZap." }, { property: "og:title", content: "Painel Admin — UaiZap" }, { property: "og:description", content: "Administração do UaiZap." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  head: () => ({ meta: [{ title: "Painel Admin — sofismar.app" }, { name: "description", content: "Administração de usuários, grupos e denúncias do sofismar.app." }, { property: "og:title", content: "Painel Admin — sofismar.app" }, { property: "og:description", content: "Administração do sofismar.app." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: AdminPage,
 });
 
@@ -40,7 +41,7 @@ function AdminPage() {
   const tabs: [Tab, string, typeof Users][] = [["users", "Usuários", Users], ["groups", "Grupos", UsersRound], ["reports", "Denúncias", Flag], ["analytics", "Analytics", BarChart3]];
   return (
     <div className="uz-admin">
-      <div className="uz-admin-top"><Link to="/" className="uz-icon-btn" aria-label="Voltar"><ArrowLeft size={20} /></Link><span className="uz-logo fs-5">Uai<span>Zap</span></span><span className="text-secondary">/ Painel Administrativo</span></div>
+      <div className="uz-admin-top"><Link to="/" className="uz-icon-btn" aria-label="Voltar"><ArrowLeft size={20} /></Link><img className="sofismar-logo-icon" src={sofismarIcon} alt="sofismar.app" /><span className="sofismar-brand fs-5">sofismar.app</span><span className="text-secondary">/ Painel Administrativo</span></div>
       <div className="uz-admin-body">
         <div className="uz-tabs">{tabs.map(([k, l, I]) => <button key={k} className={`uz-tab ${tab === k ? "active" : ""}`} onClick={() => setTab(k)}><I size={16} />{l}</button>)}</div>
         {loading && <div className="text-secondary small mb-2">Carregando...</div>}
