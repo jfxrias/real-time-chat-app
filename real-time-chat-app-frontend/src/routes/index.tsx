@@ -8,6 +8,7 @@ import { toast } from "@/lib/toast";
 import { api } from "@/services/api";
 import type { ChatMessage, Conversation, Friendship, Group, User } from "@/services/types";
 import { friendUuidOf, upsertMessage } from "@/lib/chat-utils";
+import { groupStatusLabel } from "@/lib/labels";
 import { useChatSocket, type WsStatus } from "@/services/websocket";
 import sofismarIcon from "../img/favLogoSemFundo.png";
 
@@ -119,7 +120,7 @@ function Workspace() {
             <button className="uz-icon-btn" title="Remover amigo" onClick={(e) => { e.stopPropagation(); void removeFriend(f.id); }}><UserMinus size={17} /></button>
           </div>) : <div className="uz-empty">Você ainda não tem amigos. Adicione pela aba Conversas.</div>)}
           {tab === "groups" && (groupList.length ? groupList.map((g) => <div key={g.groupUuid} className={`uz-item ${conv && key(conv) === `group:${g.groupUuid}` ? "active" : ""}`} onClick={() => setConv({ type: "group", id: g.groupUuid, name: g.groupName })}>
-            <span className="uz-avatar group">{initials(g.groupName)}</span><div className="meta"><strong>{g.groupName}</strong><small><span className={`badge ${g.status === "INACTIVE" ? "text-bg-danger" : "text-bg-success"}`}>{g.status}</span></small></div>{badge(`group:${g.groupUuid}`)}
+            <span className="uz-avatar group">{initials(g.groupName)}</span><div className="meta"><strong>{g.groupName}</strong><small><span className={`badge ${g.status === "INACTIVE" ? "text-bg-danger" : "text-bg-success"}`}>{groupStatusLabel(g.status)}</span></small></div>{badge(`group:${g.groupUuid}`)}
           </div>) : <div className="uz-empty">Nenhum grupo. Crie o primeiro!</div>)}
         </div>
       </aside>

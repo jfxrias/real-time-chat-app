@@ -3,6 +3,7 @@ import { useEffect, useId, useState } from "react";
 import { Modal } from "@/components/Modal";
 import { initials, useAuth } from "@/lib/auth";
 import { toast } from "@/lib/toast";
+import { groupMemberRoleLabel, groupStatusLabel } from "@/lib/labels";
 import { api } from "@/services/api";
 import type { Group, GroupMember, User } from "@/services/types";
 
@@ -58,7 +59,7 @@ export function ReportModal({ member, groupUuid, onClose }: { member: { userUuid
   const id = useId(); const [reason, setReason] = useState(""); const [details, setDetails] = useState(""); const [busy, setBusy] = useState(false);
   const finalReason = reason === "Outro" ? details.trim() : reason;
   const send = async () => { if (!finalReason || busy) return; setBusy(true); try { const r = await api.report({ reportedUuid: member.userUuid, groupUuid, reason: finalReason }); toast(r?.message || "Denúncia enviada.", "success"); onClose(); } catch { /* */ } finally { setBusy(false); } };
-  return <Modal title={`Denunciar ${member.name}`} onClose={onClose} footer={<><button className="btn btn-secondary" onClick={onClose}>Cancelar</button><button className="btn btn-danger" disabled={busy || !finalReason} onClick={send}>Enviar denúncia</button></>}>
+  return <Modal title={`Denunciar ${member.name}`} onClose={onClose} footer={<><button className="btn btn-secondary" onClick={onClose}>Cancelar</button><button className="btn btn-danger btn-report-submit" disabled={busy || !finalReason} onClick={send}>Enviar denúncia</button></>}>
     <div className="uz-section-title mt-0">Motivo</div>
     <div className="d-flex flex-column gap-1">{REPORT_REASONS.map((option, i) => <div className="form-check" key={option}><input className="form-check-input" type="radio" name={`report-${id}`} id={`report-${id}-${i}`} checked={reason === option} onChange={() => setReason(option)} /><label className="form-check-label" htmlFor={`report-${id}-${i}`}>{option}</label></div>)}</div>
     {reason === "Outro" && <div className="mt-3"><label className="form-label small text-secondary" htmlFor={`report-details-${id}`}>Descreva o motivo</label><textarea id={`report-details-${id}`} autoFocus className="form-control" rows={4} maxLength={255} placeholder="Descreva o motivo da denúncia" value={details} onChange={(e) => setDetails(e.target.value.slice(0, 255))} /><div className={`text-end small mt-1 ${details.length >= 240 ? "text-warning" : "text-secondary"}`}>{details.length}/255</div></div>}
@@ -84,21 +85,26 @@ export function GroupDetailsModal({ group, users, onClose, onChanged, onDeleted 
   return (
     <>
       <Modal title="Detalhes do grupo" size="lg" onClose={onClose}>
-        <div className="d-flex align-items-center gap-3 mb-2"><span className="uz-avatar group" style={{ width: 56, height: 56 }}>{initials(group.groupName)}</span><div><strong className="fs-5">{group.groupName}</strong><div><span className={`badge ${group.status === "INACTIVE" ? "text-bg-danger" : "text-bg-success"}`}>{group.status}</span></div></div></div>
+        <div className="d-flex align-items-center gap-3 mb-2"><span className="uz-avatar group" style={{ width: 56, height: 56 }}>{initials(group.groupName)}</span><div><strong className="fs-5">{group.groupName}</strong><div><span className={`badge ${group.status === "INACTIVE" ? "text-bg-danger" : "text-bg-success"}`}>{groupStatusLabel(group.status)}</span></div></div></div>
         {isCreator && <><div className="uz-section-title">Renomear</div><div className="input-group"><input className="form-control" value={name} onChange={(e) => setName(e.target.value)} /><button className="btn btn-primary d-flex align-items-center gap-1" onClick={rename}><Pencil size={14} />Salvar</button></div></>}
         {canManage && <><div className="uz-section-title">Adicionar membro</div><div className="input-group">
           <select className="form-select" value={addUuid} onChange={(e) => setAddUuid(e.target.value)}><option value="">Selecione um usuário...</option>{candidates.map((u) => <option key={u.userUuid} value={u.userUuid}>{u.name}</option>)}</select>
-          <select className="form-select" style={{ maxWidth: 130 }} value={role} onChange={(e) => setRole(e.target.value as "MEMBER" | "ADMIN")}><option value="MEMBER">MEMBER</option><option value="ADMIN">ADMIN</option></select>
+          <select className="form-select" style={{ maxWidth: 130 }} value={role} onChange={(e) => setRole(e.target.value as "MEMBER" | "ADMIN")}><option value="MEMBER">{groupMemberRoleLabel("MEMBER")}</option><option value="ADMIN">{groupMemberRoleLabel("ADMIN")}</option></select>
           <button className="btn btn-primary" disabled={!addUuid} onClick={add}><UserPlus size={16} /></button></div></>}
         <div className="uz-section-title">Membros ({members.length})</div>
-        <div className="list-group">{members.map((m) => (
-          <div key={m.userUuid} className="list-group-item d-flex align-items-center gap-2">
-            <span className="uz-avatar sm">{initials(nameOf(m))}</span>
-            <span className="flex-grow-1">{nameOf(m)}{m.userUuid === user?.userUuid && <span className="text-secondary"> (você)</span>}</span>
-            {m.userUuid === group.creatorUuid ? <span className="badge text-bg-warning d-flex gap-1 align-items-center"><Crown size={12} />Criador</span> : m.role === "ADMIN" ? <span className="badge text-bg-info d-flex gap-1 align-items-center"><Shield size={12} />ADMIN</span> : <span className="badge text-bg-secondary">MEMBER</span>}
-            {m.userUuid !== user?.userUuid && <button className="uz-icon-btn" title="Denunciar membro" onClick={() => setReporting({ userUuid: m.userUuid, name: nameOf(m) })}><Flag size={16} /></button>}
-            {canManage && m.userUuid !== group.creatorUuid && m.userUuid !== user?.userUuid && <button className="uz-icon-btn" title="Remover" onClick={() => remove(m.userUuid)}><UserMinus size={16} /></button>}
-          </div>))}</div>
+        <div className="list-group">{members.map((m) => {
+          const memberRole = m.userUuid === group.creatorUuid ? "CREATOR" : m.role;
+          const roleBadge = memberRole === "CREATOR" ? "text-bg-warning" : memberRole === "ADMIN" ? "text-bg-info" : "text-bg-secondary";
+          return (
+            <div key={m.userUuid} className="list-group-item d-flex align-items-center gap-2">
+              <span className="uz-avatar sm">{initials(nameOf(m))}</span>
+              <span className="flex-grow-1">{nameOf(m)}{m.userUuid === user?.userUuid && <span className="text-secondary"> (você)</span>}</span>
+              <span className={`badge ${roleBadge} d-flex gap-1 align-items-center`}>{memberRole === "CREATOR" && <Crown size={12} />}{memberRole === "ADMIN" && <Shield size={12} />}{groupMemberRoleLabel(memberRole)}</span>
+              {m.userUuid !== user?.userUuid && <button className="uz-icon-btn" title="Denunciar membro" onClick={() => setReporting({ userUuid: m.userUuid, name: nameOf(m) })}><Flag size={16} /></button>}
+              {canManage && m.userUuid !== group.creatorUuid && m.userUuid !== user?.userUuid && <button className="uz-icon-btn" title="Remover" onClick={() => remove(m.userUuid)}><UserMinus size={16} /></button>}
+            </div>
+          );
+        })}</div>
         {isCreator && <div className="mt-4">{confirmDel ? <div className="alert alert-danger d-flex align-items-center gap-2 mb-0"><span className="flex-grow-1">Excluir este grupo definitivamente?</span><button className="btn btn-sm btn-secondary" onClick={() => setConfirmDel(false)}>Cancelar</button><button className="btn btn-sm btn-danger" onClick={del}>Excluir</button></div>
           : <button className="btn btn-outline-danger d-flex align-items-center gap-2" onClick={() => setConfirmDel(true)}><Trash2 size={16} />Excluir grupo</button>}</div>}
       </Modal>

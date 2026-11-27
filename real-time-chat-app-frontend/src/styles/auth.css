@@ -2,5 +2,6 @@
 .uz-auth-card { width: 100%; max-width: 420px; background: var(--sofismar-surface-2); border: 1px solid var(--sofismar-border); border-radius: 20px; padding: 2.25rem 2rem; box-shadow: 0 30px 70px var(--sofismar-shadow); }
 .uz-auth-brand { display: flex; flex-direction: column; align-items: center; gap: .25rem; margin-bottom: .25rem; }
 .uz-auth-brand .sofismar-logo-icon { width: 144px; height: 144px; }
+.uz-auth-card > p { color: var(--sofismar-text-secondary) !important; text-align: center; }
 .uz-auth-card label { font-size: .85rem; color: var(--sofismar-text-secondary); }
 .uz-auth-card .form-control { padding: .7rem .9rem; }

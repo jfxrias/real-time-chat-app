@@ -14,8 +14,12 @@
   --sofismar-primary-button-hover: #D9D9D9;
   --sofismar-danger: #B84A4A;
   --sofismar-danger-hover: #A13D3D;
+  --sofismar-danger-disabled-bg: rgba(184, 74, 74, 0.25);
+  --sofismar-danger-disabled-border: rgba(184, 74, 74, 0.45);
+  --sofismar-danger-disabled-color: rgba(242, 242, 242, 0.6);
   --sofismar-success: #5C8A6D;
   --sofismar-warning: #B5944E;
+  --sofismar-table-row-hover: rgba(242, 242, 242, 0.05);
   --sofismar-border: rgba(242, 242, 242, 0.08);
   --sofismar-border-highlight: rgba(137, 135, 140, 0.35);
   --sofismar-backdrop: rgba(0, 0, 0, 0.6);
@@ -30,6 +34,7 @@
   --bs-body-font-family: var(--sofismar-font);
   --bs-emphasis-color: var(--sofismar-text-primary);
   --bs-secondary-color: var(--sofismar-text-secondary);
+  --bs-secondary-color-rgb: 191, 191, 191;
   --bs-tertiary-color: var(--sofismar-accent);
   --bs-secondary-bg: var(--sofismar-surface-1);
   --bs-tertiary-bg: var(--sofismar-surface-2);
@@ -231,6 +236,13 @@ a:hover {
   background-color: var(--sofismar-surface-3);
   border-color: var(--sofismar-surface-3);
   opacity: 1;
+}
+
+.btn-danger.btn-report-submit:disabled,
+.btn-danger.btn-report-submit.disabled {
+  color: var(--sofismar-danger-disabled-color);
+  background-color: var(--sofismar-danger-disabled-bg);
+  border-color: var(--sofismar-danger-disabled-border);
 }
 
 .form-control,

@@ -5,6 +5,7 @@ import { fmtDate, useAuth } from "@/lib/auth";
 import { toast } from "@/lib/toast";
 import { api } from "@/services/api";
 import type { Group, Report, User } from "@/services/types";
+import { groupStatusLabel } from "@/lib/labels";
 import sofismarIcon from "../img/favLogoSemFundo.png";
 
 export const Route = createFileRoute("/admin")({
@@ -50,7 +51,7 @@ function AdminPage() {
             <td className="text-end"><button className={`btn btn-sm ${u.isActive ? "btn-outline-danger" : "btn-outline-success"}`} onClick={() => toggleUser(u)} disabled={u.userUuid === user.userUuid}>{u.isActive ? "Desativar" : "Reativar"}</button></td></tr>)}
           {!loading && users.length === 0 && <tr><td colSpan={5} className="uz-empty">Nenhum usuário.</td></tr>}</tbody></table></div></div>}
         {tab === "groups" && <div className="uz-card"><div className="table-responsive"><table className="table table-hover"><thead><tr><th>Grupo</th><th>Criador</th><th>Criado em</th><th>Status</th><th className="text-end">Ação</th></tr></thead><tbody>
-          {groups.map((g) => { const a = g.status === "ACTIVE"; return <tr key={g.groupUuid}><td>{g.groupName}<div className="uz-mono">{g.groupUuid}</div></td><td className="uz-mono">{g.creatorUuid}</td><td>{fmtDate(g.createdAt)}</td><td><span className={`badge ${a ? "text-bg-success" : "text-bg-danger"}`}>{g.status}</span></td>
+          {groups.map((g) => { const a = g.status === "ACTIVE"; return <tr key={g.groupUuid}><td>{g.groupName}<div className="uz-mono">{g.groupUuid}</div></td><td className="uz-mono">{g.creatorUuid}</td><td>{fmtDate(g.createdAt)}</td><td><span className={`badge ${a ? "text-bg-success" : "text-bg-danger"}`}>{groupStatusLabel(g.status)}</span></td>
             <td className="text-end"><button className={`btn btn-sm ${a ? "btn-outline-danger" : "btn-outline-success"}`} onClick={() => toggleGroup(g)}>{a ? "Desativar" : "Reativar"}</button></td></tr>; })}
           {!loading && groups.length === 0 && <tr><td colSpan={5} className="uz-empty">Nenhum grupo.</td></tr>}</tbody></table></div></div>}
         {tab === "reports" && <div className="uz-card"><div className="table-responsive"><table className="table table-hover"><thead><tr><th>Data</th><th>Motivo</th><th>Denunciante</th><th>Denunciado</th><th>Grupo</th></tr></thead><tbody>

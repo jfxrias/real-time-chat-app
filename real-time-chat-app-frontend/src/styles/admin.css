@@ -1,10 +1,11 @@
 .uz-admin { min-height: 100vh; background: var(--sofismar-bg); }
 .uz-admin-top { background: var(--sofismar-surface-1); border-bottom: 1px solid var(--sofismar-border); padding: .8rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+.uz-admin-top .text-secondary { color: var(--sofismar-text-secondary) !important; }
 .uz-admin-body { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
 .uz-admin .uz-tabs { padding: 0; margin-bottom: 1.25rem; justify-content: flex-start; gap: .5rem; }
 .uz-admin .uz-tab { flex: 0 0 auto; padding: .75rem 1rem; display: inline-flex; gap: .4rem; align-items: center; }
 .uz-card { background: var(--sofismar-surface-2); border: 1px solid var(--sofismar-border); border-radius: 14px; overflow: hidden; }
-.uz-card .table { margin: 0; --bs-table-bg: var(--sofismar-surface-2); --bs-table-color: var(--sofismar-text-primary); --bs-table-hover-bg: var(--sofismar-surface-3); --bs-table-hover-color: var(--sofismar-text-primary); }
+.uz-card .table { margin: 0; --bs-table-bg: var(--sofismar-surface-2); --bs-table-color: var(--sofismar-text-primary); --bs-table-hover-bg: var(--sofismar-table-row-hover); --bs-table-hover-color: var(--sofismar-text-primary); }
 .uz-card .table th { color: var(--sofismar-text-secondary); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; background: var(--sofismar-surface-1); border-color: var(--sofismar-border); }
 .uz-card .table td { border-color: var(--sofismar-border); vertical-align: middle; font-size: .9rem; }
 .uz-mono { font-family: ui-monospace, monospace; font-size: .78rem; color: var(--sofismar-text-secondary); }
