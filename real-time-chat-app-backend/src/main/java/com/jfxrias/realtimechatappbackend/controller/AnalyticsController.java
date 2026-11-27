@@ -25,8 +25,8 @@ public class AnalyticsController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         try {
-            extractAuthenticatedUserUuid(authorization);
-            return ResponseEntity.ok(analyticsService.getReceivedPercentageByUser());
+            String adminUuid = extractAuthenticatedUserUuid(authorization);
+            return ResponseEntity.ok(analyticsService.getReceivedPercentageByUser(adminUuid));
         } catch (IllegalArgumentException e) {
             return buildErrorResponse(e);
         }
@@ -37,8 +37,8 @@ public class AnalyticsController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         try {
-            extractAuthenticatedUserUuid(authorization);
-            return ResponseEntity.ok(analyticsService.getUsersWithMostFriends());
+            String adminUuid = extractAuthenticatedUserUuid(authorization);
+            return ResponseEntity.ok(analyticsService.getUsersWithMostFriends(adminUuid));
         } catch (IllegalArgumentException e) {
             return buildErrorResponse(e);
         }
@@ -49,8 +49,8 @@ public class AnalyticsController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         try {
-            extractAuthenticatedUserUuid(authorization);
-            return ResponseEntity.ok(analyticsService.getGroupMemberCount());
+            String adminUuid = extractAuthenticatedUserUuid(authorization);
+            return ResponseEntity.ok(analyticsService.getGroupMemberCount(adminUuid));
         } catch (IllegalArgumentException e) {
             return buildErrorResponse(e);
         }
@@ -61,8 +61,8 @@ public class AnalyticsController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         try {
-            extractAuthenticatedUserUuid(authorization);
-            return ResponseEntity.ok(analyticsService.getTopReportedUsers());
+            String adminUuid = extractAuthenticatedUserUuid(authorization);
+            return ResponseEntity.ok(analyticsService.getTopReportedUsers(adminUuid));
         } catch (IllegalArgumentException e) {
             return buildErrorResponse(e);
         }
@@ -73,8 +73,8 @@ public class AnalyticsController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         try {
-            extractAuthenticatedUserUuid(authorization);
-            return ResponseEntity.ok(analyticsService.getCommonReportReasons());
+            String adminUuid = extractAuthenticatedUserUuid(authorization);
+            return ResponseEntity.ok(analyticsService.getCommonReportReasons(adminUuid));
         } catch (IllegalArgumentException e) {
             return buildErrorResponse(e);
         }
@@ -85,8 +85,8 @@ public class AnalyticsController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         try {
-            extractAuthenticatedUserUuid(authorization);
-            return ResponseEntity.ok(analyticsService.getUsersInMostGroups());
+            String adminUuid = extractAuthenticatedUserUuid(authorization);
+            return ResponseEntity.ok(analyticsService.getUsersInMostGroups(adminUuid));
         } catch (IllegalArgumentException e) {
             return buildErrorResponse(e);
         }
@@ -97,8 +97,8 @@ public class AnalyticsController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         try {
-            extractAuthenticatedUserUuid(authorization);
-            return ResponseEntity.ok(analyticsService.getMostInactiveUser());
+            String adminUuid = extractAuthenticatedUserUuid(authorization);
+            return ResponseEntity.ok(analyticsService.getMostInactiveUser(adminUuid));
         } catch (IllegalArgumentException e) {
             return buildErrorResponse(e);
         }
@@ -112,8 +112,8 @@ public class AnalyticsController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         try {
-            extractAuthenticatedUserUuid(authorization);
-            return ResponseEntity.ok(analyticsService.getUserMessageStats(userUuid, start, end));
+            String adminUuid = extractAuthenticatedUserUuid(authorization);
+            return ResponseEntity.ok(analyticsService.getUserMessageStats(adminUuid, userUuid, start, end));
         } catch (IllegalArgumentException e) {
             return buildErrorResponse(e);
         }
@@ -121,20 +121,24 @@ public class AnalyticsController {
 
     private String extractAuthenticatedUserUuid(String authorization) {
         if (authorization == null || !authorization.startsWith("Bearer ")) {
-            throw new IllegalArgumentException("Token nao informado");
+            throw new IllegalArgumentException("Token não informado");
         }
         String token = authorization.substring(7).trim();
         if (token.isBlank()) {
-            throw new IllegalArgumentException("Token nao informado");
+            throw new IllegalArgumentException("Token não informado");
         }
         return jwtUtil.extractUserUuid(token);
     }
 
     private ResponseEntity<Map<String, String>> buildErrorResponse(IllegalArgumentException e) {
-        boolean tokenError = e.getMessage().equals("Token invalido ou expirado")
-                || e.getMessage().equals("Token nao informado");
-        return tokenError
-                ? ResponseEntity.status(401).body(Map.of("message", e.getMessage()))
-                : ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        boolean tokenError = e.getMessage().equals("Token inválido ou expirado")
+                || e.getMessage().equals("Token não informado");
+        if (tokenError) {
+            return ResponseEntity.status(401).body(Map.of("message", e.getMessage()));
+        }
+        if (e.getMessage().equals("Acesso exclusivo para administradores")) {
+            return ResponseEntity.status(403).body(Map.of("message", e.getMessage()));
+        }
+        return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
     }
 }

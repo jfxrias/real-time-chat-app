@@ -130,6 +130,34 @@ public class AnalyticsControllerIntegrationTest {
     }
 
     @Test
+    void shouldReturn403ForRegularUser() throws Exception {
+        String regularToken = authenticateAndGetToken(bruno.getCpf(), "123456");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(regularToken);
+
+        assertStatus(
+                () -> restTemplate.exchange(
+                        url("/analytics/messages/received-percentage"),
+                        HttpMethod.GET,
+                        new HttpEntity<>(headers),
+                        String.class
+                ),
+                HttpStatus.FORBIDDEN
+        );
+    }
+
+    @Test
+    void shouldReturn200ForAdmin() {
+        ResponseEntity<String> response = restTemplate.exchange(
+                url("/analytics/messages/received-percentage"),
+                HttpMethod.GET,
+                authorized(),
+                String.class
+        );
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
+    @Test
     void shouldReturn401WithoutToken() {
         assertStatus(
                 () -> restTemplate.getForEntity(url("/analytics/messages/received-percentage"), String.class),
@@ -144,8 +172,8 @@ public class AnalyticsControllerIntegrationTest {
 
         JsonNode body = objectMapper.readTree(response.getBody());
         assertEquals(4, body.size());
-        assertEquals("Bruno", body.get(0).get("name").asText());
-        assertEquals(4, body.get(0).get("receivedCount").asInt());
+        assertEquals("Ana", body.get(0).get("name").asText());
+        assertEquals(3, body.get(0).get("receivedCount").asInt());
     }
 
     @Test
@@ -225,8 +253,8 @@ public class AnalyticsControllerIntegrationTest {
         JsonNode body = objectMapper.readTree(response.getBody());
         assertEquals("Bruno", body.get("name").asText());
         assertEquals(2, body.get("sentCount").asInt());
-        assertEquals(4, body.get("receivedCount").asInt());
-        assertEquals(6, body.get("totalCount").asInt());
+        assertEquals(3, body.get("receivedCount").asInt());
+        assertEquals(5, body.get("totalCount").asInt());
     }
 
     @Test
